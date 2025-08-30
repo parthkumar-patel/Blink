@@ -1,0 +1,127 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  users: defineTable({
+    clerkId: v.string(), // Clerk user ID
+    email: v.string(),
+    name: v.string(),
+    university: v.string(),
+    year: v.union(
+      v.literal("freshman"),
+      v.literal("sophomore"), 
+      v.literal("junior"),
+      v.literal("senior"),
+      v.literal("graduate")
+    ),
+    interests: v.array(v.string()),
+    location: v.optional(v.object({
+      latitude: v.number(),
+      longitude: v.number(),
+      address: v.string(),
+    })),
+    preferences: v.object({
+      maxDistance: v.number(),
+      notificationSettings: v.object({
+        email: v.boolean(),
+        push: v.boolean(),
+        sms: v.boolean(),
+      }),
+      privacySettings: v.object({
+        profileVisible: v.boolean(),
+        showInBuddyMatching: v.boolean(),
+      }),
+      buddyMatchingEnabled: v.boolean(),
+    }),
+    lastActiveAt: v.number(),
+  })
+    .index("by_clerk_id", ["clerkId"])
+    .index("by_university", ["university"])
+    .searchIndex("search_users", {
+      searchField: "name",
+      filterFields: ["university", "year"]
+    }),
+
+  events: defineTable({
+    title: v.string(),
+    description: v.string(),
+    aiSummary: v.optional(v.string()),
+    startDate: v.number(),
+    endDate: v.number(),
+    location: v.object({
+      name: v.string(),
+      address: v.string(),
+      latitude: v.number(),
+      longitude: v.number(),
+      isVirtual: v.boolean(),
+    }),
+    organizer: v.object({
+      name: v.string(),
+      type: v.union(
+        v.literal("club"),
+        v.literal("university"),
+        v.literal("external"),
+        v.literal("student")
+      ),
+      verified: v.boolean(),
+      contactInfo: v.string(),
+    }),
+    categories: v.array(v.string()),
+    tags: v.array(v.string()),
+    capacity: v.optional(v.number()),
+    price: v.object({
+      amount: v.number(),
+      currency: v.string(),
+      isFree: v.boolean(),
+    }),
+    images: v.array(v.string()),
+    externalLinks: v.object({
+      registration: v.optional(v.string()),
+      website: v.optional(v.string()),
+      social: v.optional(v.array(v.string())),
+    }),
+    source: v.object({
+      platform: v.string(),
+      originalId: v.string(),
+      url: v.string(),
+    }),
+    rsvpCount: v.number(),
+    attendanceCount: v.optional(v.number()),
+  })
+    .index("by_start_date", ["startDate"])
+    .index("by_categories", ["categories"])
+    .index("by_location", ["location.latitude", "location.longitude"])
+    .searchIndex("search_events", {
+      searchField: "title",
+      filterFields: ["categories", "startDate", "organizer.type"]
+    }),
+
+  rsvps: defineTable({
+    userId: v.id("users"),
+    eventId: v.id("events"),
+    status: v.union(
+      v.literal("going"),
+      v.literal("interested"),
+      v.literal("not_going")
+    ),
+    buddyMatchingEnabled: v.boolean(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_event", ["eventId"])
+    .index("by_user_event", ["userId", "eventId"]),
+
+  buddyMatches: defineTable({
+    eventId: v.id("events"),
+    user1Id: v.id("users"),
+    user2Id: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("declined")
+    ),
+    matchScore: v.number(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_user1", ["user1Id"])
+    .index("by_user2", ["user2Id"]),
+});
