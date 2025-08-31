@@ -9,17 +9,19 @@ export default defineSchema({
     university: v.string(),
     year: v.union(
       v.literal("freshman"),
-      v.literal("sophomore"), 
+      v.literal("sophomore"),
       v.literal("junior"),
       v.literal("senior"),
       v.literal("graduate")
     ),
     interests: v.array(v.string()),
-    location: v.optional(v.object({
-      latitude: v.number(),
-      longitude: v.number(),
-      address: v.string(),
-    })),
+    location: v.optional(
+      v.object({
+        latitude: v.number(),
+        longitude: v.number(),
+        address: v.string(),
+      })
+    ),
     preferences: v.object({
       maxDistance: v.number(),
       notificationSettings: v.object({
@@ -39,7 +41,7 @@ export default defineSchema({
     .index("by_university", ["university"])
     .searchIndex("search_users", {
       searchField: "name",
-      filterFields: ["university", "year"]
+      filterFields: ["university", "year"],
     }),
 
   events: defineTable({
@@ -93,7 +95,7 @@ export default defineSchema({
     .index("by_location", ["location.latitude", "location.longitude"])
     .searchIndex("search_events", {
       searchField: "title",
-      filterFields: ["categories", "startDate", "organizer.type"]
+      filterFields: ["categories", "startDate", "organizer.type"],
     }),
 
   rsvps: defineTable({
@@ -124,4 +126,45 @@ export default defineSchema({
     .index("by_event", ["eventId"])
     .index("by_user1", ["user1Id"])
     .index("by_user2", ["user2Id"]),
+
+  clubs: defineTable({
+    name: v.string(),
+    description: v.string(),
+    amsUrl: v.string(),
+    websiteUrl: v.optional(v.string()),
+    socialMedia: v.object({
+      instagram: v.optional(v.string()),
+      facebook: v.optional(v.string()),
+      linkedin: v.optional(v.string()),
+      twitter: v.optional(v.string()),
+    }),
+    contact: v.object({
+      email: v.optional(v.string()),
+      phone: v.optional(v.string()),
+    }),
+    location: v.optional(
+      v.object({
+        address: v.string(),
+        room: v.optional(v.string()),
+        building: v.optional(v.string()),
+      })
+    ),
+    image: v.optional(v.string()),
+    categories: v.array(v.string()),
+    isActive: v.boolean(),
+    lastScrapedAt: v.number(),
+    scrapedData: v.optional(
+      v.object({
+        rawHtml: v.optional(v.string()),
+        extractedText: v.optional(v.string()),
+      })
+    ),
+  })
+    .index("by_name", ["name"])
+    .index("by_ams_url", ["amsUrl"])
+    .index("by_categories", ["categories"])
+    .searchIndex("search_clubs", {
+      searchField: "name",
+      filterFields: ["categories", "isActive"],
+    }),
 });

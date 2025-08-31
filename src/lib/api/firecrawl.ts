@@ -21,9 +21,8 @@ export class FirecrawlClient {
 
   async scrapeUBCEvents(): Promise<ScrapedEvent[]> {
     const ubcEventSources = [
-      "https://events.ubc.ca",
-      "https://students.ubc.ca/campus-life",
-      "https://ubccsss.org/events",
+      "https://amsclubs.ca/all-events/",
+      "https://amsclubs.ca/all-clubs/",
     ];
 
     const allEvents: ScrapedEvent[] = [];
@@ -44,7 +43,7 @@ export class FirecrawlClient {
 
   async scrapeEventsFromUrl(url: string): Promise<ScrapedEvent[]> {
     try {
-      const scrapeResult = await this.app.scrapeUrl(url, {
+      const scrapeResult = await this.app.scrape(url, {
         formats: ["markdown", "html"],
         includeTags: [
           "title",
@@ -62,13 +61,13 @@ export class FirecrawlClient {
         waitFor: 2000, // Wait for dynamic content
       });
 
-      if (!scrapeResult.success) {
-        throw new Error(`Failed to scrape ${url}: ${scrapeResult.error}`);
+      if (!scrapeResult || !scrapeResult.markdown) {
+        throw new Error(`Failed to scrape ${url}: No content returned`);
       }
 
       // Extract events from the scraped content
       const events = await this.extractEventsFromContent(
-        scrapeResult.markdown || "",
+        scrapeResult.markdown,
         url
       );
       return events;

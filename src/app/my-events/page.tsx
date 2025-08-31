@@ -34,13 +34,44 @@ export default function MyEventsPage() {
     userProfile?._id ? { userId: userProfile._id } : "skip"
   );
 
-  if (!userProfile) {
+  if (!user) {
     return (
       <AppLayout>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Please sign in</h2>
             <p className="text-gray-600">You need to be signed in to view your events.</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Show loading state while profile is being fetched
+  if (userProfile === undefined) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading your events...</h2>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // If user profile doesn't exist, redirect to profile creation
+  if (userProfile === null) {
+    return (
+      <AppLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Profile Setup Required</h2>
+            <p className="text-gray-600 mb-4">Please complete your profile setup to view your events.</p>
+            <Link href="/profile">
+              <Button>Complete Profile Setup</Button>
+            </Link>
           </div>
         </div>
       </AppLayout>
@@ -110,10 +141,10 @@ export default function MyEventsPage() {
                       </div>
                     </div>
 
-                    {event.imageUrl && (
+                    {event.images && event.images.length > 0 && (
                       <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
                         <img
-                          src={event.imageUrl}
+                          src={event.images[0]}
                           alt={event.title}
                           className="w-full h-full object-cover"
                         />

@@ -24,15 +24,17 @@ export function Navbar() {
 
   const publicNavigation = [
     { name: 'Events', href: '/events' },
+    { name: 'Clubs', href: '/clubs' },
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];
 
   const authenticatedNavigation = [
     { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Events', href: '/events' },
+    { name: 'Clubs', href: '/clubs' },
     { name: 'My Events', href: '/my-events' },
     { name: 'Discover', href: '/discover' },
-    { name: 'Map', href: '/map' },
   ];
 
   const userMenuItems = [

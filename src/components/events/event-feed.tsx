@@ -14,13 +14,15 @@ interface EventFeedProps {
   limit?: number;
   showFilters?: boolean;
   showRecommendationScores?: boolean;
+  viewMode?: "list" | "grid";
 }
 
 export function EventFeed({ 
   showPersonalized = true, 
   limit = 20,
   showFilters = true,
-  showRecommendationScores = false
+  showRecommendationScores = false,
+  viewMode = "grid"
 }: EventFeedProps) {
   const { user } = useUser();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -102,7 +104,9 @@ export function EventFeed({
     if (!userRSVPs) return {};
     const map: Record<string, 'going' | 'interested'> = {};
     userRSVPs.forEach(rsvp => {
-      map[rsvp.eventId] = rsvp.status;
+      if (rsvp.status === 'going' || rsvp.status === 'interested') {
+        map[rsvp.eventId] = rsvp.status;
+      }
     });
     return map;
   }, [userRSVPs]);
@@ -130,7 +134,7 @@ export function EventFeed({
       } else {
         // Create new RSVP
         await createRSVP({
-          eventId,
+          eventId: eventId as any,
           status
         });
       }
@@ -225,8 +229,12 @@ export function EventFeed({
         />
       )}
 
-      {/* Event Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {/* Event Grid/List */}
+      <div className={
+        viewMode === "list" 
+          ? "space-y-4" 
+          : "grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+      }>
         {filteredEvents.map((event) => (
           <EventCard
             key={event._id}
@@ -234,6 +242,7 @@ export function EventFeed({
             onRSVP={handleRSVP}
             userRSVPStatus={rsvpStatusMap[event._id] || null}
             showRecommendationScore={showRecommendationScores}
+            viewMode={viewMode}
           />
         ))}
       </div>

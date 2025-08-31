@@ -40,13 +40,15 @@ interface EventCardProps {
   onRSVP?: (eventId: string, status: 'going' | 'interested') => void;
   userRSVPStatus?: 'going' | 'interested' | null;
   showRecommendationScore?: boolean;
+  viewMode?: "list" | "grid";
 }
 
 export function EventCard({ 
   event, 
   onRSVP, 
   userRSVPStatus, 
-  showRecommendationScore = false 
+  showRecommendationScore = false,
+  viewMode = "grid"
 }: EventCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
@@ -78,6 +80,101 @@ export function EventCard({
       onRSVP(event._id, status);
     }
   };
+
+  if (viewMode === "list") {
+    return (
+      <Card className="w-full hover:shadow-lg transition-shadow duration-200 group">
+        <div className="flex">
+          {event.imageUrl && (
+            <div className="relative w-48 h-32 overflow-hidden rounded-l-lg flex-shrink-0">
+              <img
+                src={event.imageUrl}
+                alt={event.title}
+                className="w-full h-full object-cover"
+              />
+              {showRecommendationScore && event.recommendationScore && (
+                <div className="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                  <Star className="w-3 h-3" />
+                  {event.recommendationScore}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex-1 p-4">
+            <div className="flex justify-between items-start mb-2">
+              <Link href={`/events/${event._id}`}>
+                <h3 className="font-semibold text-lg leading-tight hover:text-blue-600 transition-colors cursor-pointer">
+                  {event.title}
+                </h3>
+              </Link>
+              {!event.imageUrl && showRecommendationScore && event.recommendationScore && (
+                <div className="bg-blue-600 text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                  <Star className="w-3 h-3" />
+                  {event.recommendationScore}
+                </div>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap gap-1 mb-3">
+              {event.categories.slice(0, 3).map((category) => (
+                <Badge key={category} variant="secondary" className="text-xs">
+                  {category}
+                </Badge>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                <span>{getDateLabel()}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock className="w-4 h-4" />
+                <span>{getTimeLabel()}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <MapPin className="w-4 h-4" />
+                <span>{event.location.isVirtual ? 'Virtual' : event.location.name}</span>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-700 line-clamp-2 mb-3">
+              {displayDescription}
+            </p>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-1">
+                  <Users className="w-4 h-4" />
+                  <span>{event.rsvpCount} going</span>
+                </div>
+                <span className="font-medium">
+                  {event.price.isFree ? 'Free' : `$${event.price.amount}`}
+                </span>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant={userRSVPStatus === 'going' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleRSVP('going')}
+                >
+                  {userRSVPStatus === 'going' ? 'Going' : 'Going'}
+                </Button>
+                <Button
+                  variant={userRSVPStatus === 'interested' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleRSVP('interested')}
+                >
+                  {userRSVPStatus === 'interested' ? 'Interested' : 'Interested'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full hover:shadow-lg transition-shadow duration-200 group">

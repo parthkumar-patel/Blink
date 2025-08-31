@@ -28,7 +28,7 @@ export default function EventDetailPage() {
   const eventId = params.id as string;
 
   // Get event details
-  const event = useQuery(api.events.getEventById, { eventId });
+  const event = useQuery(api.events.getEventById, { eventId: eventId as any });
   
   // Get user profile
   const userProfile = useQuery(
@@ -79,7 +79,7 @@ export default function EventDetailPage() {
           // Toggle off
           await updateRSVP({
             rsvpId: userRSVP._id,
-            status: 'cancelled'
+            status: 'not_going'
           });
         } else {
           // Update status
@@ -91,7 +91,7 @@ export default function EventDetailPage() {
       } else {
         // Create new RSVP
         await createRSVP({
-          eventId,
+          eventId: eventId as any,
           status
         });
       }
@@ -127,10 +127,10 @@ export default function EventDetailPage() {
 
         {/* Event header */}
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          {event.imageUrl && (
+          {event.images && event.images.length > 0 && (
             <div className="h-64 overflow-hidden">
               <img
-                src={event.imageUrl}
+                src={event.images[0]}
                 alt={event.title}
                 className="w-full h-full object-cover"
               />
@@ -213,9 +213,9 @@ export default function EventDetailPage() {
                     <div className="font-medium">
                       {event.rsvpCount} people going
                     </div>
-                    {event.maxCapacity && (
+                    {event.capacity && (
                       <div className="text-sm text-gray-500">
-                        {event.maxCapacity - event.rsvpCount} spots remaining
+                        {event.capacity - event.rsvpCount} spots remaining
                       </div>
                     )}
                   </div>
@@ -281,10 +281,10 @@ export default function EventDetailPage() {
               </p>
             </div>
 
-            {event.sourceUrl && (
+            {event.source?.url && (
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <a
-                  href={event.sourceUrl}
+                  href={event.source.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800"

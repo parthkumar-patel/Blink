@@ -17,4 +17,12 @@ crons.weekly(
   internal.aggregation.cleanupOldEvents
 );
 
+// Update club data weekly (Saturday at 4 AM UTC)
+// TODO: Uncomment after clubs functions are deployed
+// crons.weekly(
+//   "update club data",
+//   { dayOfWeek: "saturday", hourUTC: 4, minuteUTC: 0 },
+//   internal.clubs.scrapeAllClubs
+// );
+
 export default crons;
