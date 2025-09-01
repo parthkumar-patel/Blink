@@ -9,10 +9,12 @@ import {
   Bell,
   Search,
   Plus,
-  ChevronDown
+  ChevronDown,
+  Heart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -51,29 +53,29 @@ export function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-background/80 backdrop-blur-md cute-soft-shadow border-b border-border sticky top-0 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and brand */}
           <div className="flex items-center">
-            <Link href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-white" />
+            <Link href={isSignedIn ? "/dashboard" : "/"} className="flex items-center gap-2 group">
+              <div className="w-8 h-8 cute-gradient-pink cute-rounded flex items-center justify-center cute-glow group-hover:cute-glow-strong transition-all duration-300">
+                <Heart className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl text-gray-900">EventFinder</span>
+              <span className="font-bold text-xl text-foreground cute-text-glow">CutieEvents</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-2">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-4 py-2 cute-rounded text-sm font-medium transition-all duration-300 hover:scale-105 ${
                   isActivePath(item.href)
-                    ? 'text-blue-600 bg-blue-50'
-                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                    ? 'text-cute-pink bg-accent cute-glow cute-text-glow'
+                    : 'text-foreground hover:text-cute-pink hover:bg-accent/50 hover:cute-glow'
                 }`}
               >
                 {item.name}
@@ -82,11 +84,14 @@ export function Navbar() {
           </div>
 
           {/* Right side actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {/* Search - only for authenticated users */}
             {isSignedIn && (
               <Link href="/search">
-                <Button variant="ghost" size="sm" className="hidden sm:flex">
+                <Button variant="ghost" size="sm" className="hidden sm:flex cute-glow hover:cute-glow-strong">
                   <Search className="w-4 h-4" />
                 </Button>
               </Link>
@@ -95,7 +100,7 @@ export function Navbar() {
             {/* Create Event - only for authenticated users */}
             {isSignedIn && (
               <Link href="/create-event">
-                <Button size="sm" className="hidden sm:flex items-center gap-2">
+                <Button variant="cute-gradient" size="sm" className="hidden sm:flex items-center gap-2">
                   <Plus className="w-4 h-4" />
                   Create Event
                 </Button>
@@ -104,11 +109,10 @@ export function Navbar() {
 
             {/* Notifications - only for authenticated users */}
             {isSignedIn && (
-              <Button variant="ghost" size="sm" className="relative">
+              <Button variant="ghost" size="sm" className="relative cute-glow hover:cute-glow-strong">
                 <Bell className="w-4 h-4" />
                 <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 w-4 h-4 p-0 flex items-center justify-center text-xs"
+                  className="absolute -top-1 -right-1 w-4 h-4 p-0 flex items-center justify-center text-xs cute-gradient-pink border-0 cute-glow"
                 >
                   2
                 </Badge>
@@ -120,26 +124,26 @@ export function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-2 p-2 cute-rounded hover:bg-accent cute-glow hover:cute-glow-strong transition-all duration-300 hover:scale-105"
                 >
                   <UserButton 
                     appearance={{
                       elements: {
-                        avatarBox: "w-8 h-8"
+                        avatarBox: "w-8 h-8 cute-rounded cute-border-glow"
                       }
                     }}
                   />
-                  <ChevronDown className="w-4 h-4 text-gray-500 hidden sm:block" />
+                  <ChevronDown className="w-4 h-4 text-muted-foreground hidden sm:block" />
                 </button>
 
                 {/* User dropdown menu */}
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">
+                  <div className="absolute right-0 mt-2 w-48 bg-card cute-rounded-lg cute-soft-shadow cute-border-glow border border-border py-1 z-50 backdrop-blur-md">
+                    <div className="px-4 py-2 border-b border-border">
+                      <p className="text-sm font-medium text-foreground cute-text-glow">
                         {user?.firstName} {user?.lastName}
                       </p>
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {user?.primaryEmailAddress?.emailAddress}
                       </p>
                     </div>
@@ -147,7 +151,7 @@ export function Navbar() {
                       <Link
                         key={item.name}
                         href={item.href}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="block px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-cute-pink cute-rounded mx-1 my-0.5 transition-all duration-300 hover:cute-glow"
                         onClick={() => setUserMenuOpen(false)}
                       >
                         {item.name}
@@ -159,12 +163,12 @@ export function Navbar() {
             ) : (
               <div className="flex items-center gap-2">
                 <SignInButton mode="modal">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="cute-glow hover:cute-glow-strong">
                     Sign In
                   </Button>
                 </SignInButton>
                 <SignUpButton mode="modal">
-                  <Button size="sm">
+                  <Button variant="cute-gradient" size="sm">
                     Sign Up
                   </Button>
                 </SignUpButton>
@@ -175,7 +179,7 @@ export function Navbar() {
             <Button
               variant="ghost"
               size="sm"
-              className="md:hidden"
+              className="md:hidden cute-glow hover:cute-glow-strong"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? (
@@ -189,16 +193,16 @@ export function Navbar() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 py-4">
+          <div className="md:hidden border-t border-border py-4 bg-card/50 backdrop-blur-md cute-soft-shadow">
             <div className="space-y-2">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                  className={`block px-3 py-2 cute-rounded text-base font-medium transition-all duration-300 mx-2 ${
                     isActivePath(item.href)
-                      ? 'text-blue-600 bg-blue-50'
-                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                      ? 'text-cute-pink bg-accent cute-glow cute-text-glow'
+                      : 'text-foreground hover:text-cute-pink hover:bg-accent/50 hover:cute-glow'
                   }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -209,10 +213,10 @@ export function Navbar() {
               {/* Mobile-only actions */}
               {isSignedIn && (
                 <>
-                  <div className="border-t border-gray-200 pt-4 mt-4">
+                  <div className="border-t border-border pt-4 mt-4">
                     <Link
                       href="/search"
-                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 transition-colors"
+                      className="block px-3 py-2 cute-rounded text-base font-medium text-foreground hover:text-cute-pink hover:bg-accent/50 hover:cute-glow transition-all duration-300 mx-2"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Search className="w-4 h-4 inline mr-2" />
@@ -220,7 +224,7 @@ export function Navbar() {
                     </Link>
                     <Link
                       href="/create-event"
-                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 transition-colors"
+                      className="block px-3 py-2 cute-rounded text-base font-medium text-foreground hover:text-cute-pink hover:bg-accent/50 hover:cute-glow transition-all duration-300 mx-2"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <Plus className="w-4 h-4 inline mr-2" />
@@ -228,12 +232,12 @@ export function Navbar() {
                     </Link>
                   </div>
                   
-                  <div className="border-t border-gray-200 pt-4 mt-4">
+                  <div className="border-t border-border pt-4 mt-4">
                     {userMenuItems.map((item) => (
                       <Link
                         key={item.name}
                         href={item.href}
-                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 transition-colors"
+                        className="block px-3 py-2 cute-rounded text-base font-medium text-foreground hover:text-cute-pink hover:bg-accent/50 hover:cute-glow transition-all duration-300 mx-2"
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         {item.name}
