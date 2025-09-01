@@ -127,6 +127,15 @@ export default defineSchema({
     .index("by_user1", ["user1Id"])
     .index("by_user2", ["user2Id"]),
 
+  favorites: defineTable({
+    userId: v.id("users"),
+    eventId: v.id("events"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_event", ["eventId"])
+    .index("by_user_event", ["userId", "eventId"]),
+
   clubs: defineTable({
     name: v.string(),
     description: v.string(),

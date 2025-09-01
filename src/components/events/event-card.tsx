@@ -39,6 +39,8 @@ interface EventCardProps {
   };
   onRSVP?: (eventId: string, status: 'going' | 'interested') => void;
   userRSVPStatus?: 'going' | 'interested' | null;
+  onToggleFavorite?: (eventId: string) => void;
+  isFavorited?: boolean;
   showRecommendationScore?: boolean;
   viewMode?: "list" | "grid";
 }
@@ -47,6 +49,8 @@ export function EventCard({
   event, 
   onRSVP, 
   userRSVPStatus, 
+  onToggleFavorite,
+  isFavorited = false,
   showRecommendationScore = false,
   viewMode = "grid"
 }: EventCardProps) {
@@ -78,6 +82,12 @@ export function EventCard({
   const handleRSVP = (status: 'going' | 'interested') => {
     if (onRSVP) {
       onRSVP(event._id, status);
+    }
+  };
+
+  const handleToggleFavorite = () => {
+    if (onToggleFavorite) {
+      onToggleFavorite(event._id);
     }
   };
 
@@ -154,6 +164,16 @@ export function EventCard({
               </div>
               
               <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleToggleFavorite}
+                  className="p-2"
+                >
+                  <Star 
+                    className={`w-4 h-4 ${isFavorited ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`}
+                  />
+                </Button>
                 <Button
                   variant={userRSVPStatus === 'going' ? 'default' : 'outline'}
                   size="sm"
@@ -299,6 +319,16 @@ export function EventCard({
 
       <CardFooter className="pt-0">
         <div className="flex gap-2 w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleToggleFavorite}
+            className="p-2"
+          >
+            <Star 
+              className={`w-4 h-4 ${isFavorited ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`}
+            />
+          </Button>
           <Button
             variant={userRSVPStatus === 'going' ? 'default' : 'outline'}
             size="sm"

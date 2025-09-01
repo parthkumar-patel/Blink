@@ -40,14 +40,13 @@ export function EventFeed({
 
   // Get events based on personalization preference
   const events = useQuery(
-    showPersonalized && userProfile?._id
-      ? api.events.getPersonalizedEvents
+    showPersonalized && userProfile?.clerkId
+      ? api.ai.getEnhancedRecommendations
       : api.events.getEvents,
-    showPersonalized && userProfile?._id
+    showPersonalized && userProfile?.clerkId
       ? {
-          userId: userProfile._id,
+          clerkId: userProfile.clerkId,
           limit: loadedEvents,
-          categories: selectedCategories.length > 0 ? selectedCategories : undefined,
         }
       : {
           limit: loadedEvents,
@@ -61,9 +60,23 @@ export function EventFeed({
     userProfile?._id ? { userId: userProfile._id } : "skip"
   );
 
+  // Get favorite statuses for all events
+  const favoriteStatuses = useQuery(
+    api.favorites.getFavoriteStatuses,
+    userProfile?._id && events && events.length > 0 
+      ? { 
+          userId: userProfile._id, 
+          eventIds: events.map(e => e._id) 
+        } 
+      : "skip"
+  );
+
   // RSVP mutation
   const createRSVP = useMutation(api.rsvps.createRSVP);
   const updateRSVP = useMutation(api.rsvps.updateRSVP);
+
+  // Favorites mutation
+  const toggleFavorite = useMutation(api.favorites.toggleFavorite);
 
   // Get all available categories for filtering
   const allCategories = useMemo(() => {
@@ -140,6 +153,19 @@ export function EventFeed({
       }
     } catch (error) {
       console.error('Error updating RSVP:', error);
+    }
+  };
+
+  const handleToggleFavorite = async (eventId: string) => {
+    if (!userProfile?._id) return;
+
+    try {
+      await toggleFavorite({
+        userId: userProfile._id,
+        eventId: eventId as any
+      });
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
     }
   };
 
@@ -241,6 +267,8 @@ export function EventFeed({
             event={event}
             onRSVP={handleRSVP}
             userRSVPStatus={rsvpStatusMap[event._id] || null}
+            onToggleFavorite={handleToggleFavorite}
+            isFavorited={favoriteStatuses?.[event._id] || false}
             showRecommendationScore={showRecommendationScores}
             viewMode={viewMode}
           />

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
 
     if (action === "scrape-all") {
       // Scrape all clubs from the AMS directory
-      const result = await convex.action(api.clubs.scrapeAllClubs, {});
+      const result = await convex.action(api.clubsActions.scrapeAllClubs, {});
 
       return NextResponse.json({
         success: true,
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       });
     } else if (action === "scrape-single" && clubUrl) {
       // Scrape a specific club
-      const result = await convex.action(api.clubs.scrapeSpecificClub, {
+      const result = await convex.action(api.clubsActions.scrapeSpecificClub, {
         clubUrl,
       });
 

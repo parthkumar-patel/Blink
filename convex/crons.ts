@@ -7,7 +7,7 @@ const crons = cronJobs();
 crons.daily(
   "daily event sync",
   { hourUTC: 6, minuteUTC: 0 },
-  internal.aggregation.dailyEventSync
+  internal.aggregationActions.dailyEventSync
 );
 
 // Clean up old events weekly (Sunday at 2 AM UTC)

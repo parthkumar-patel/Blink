@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
-import { Calendar, Clock, MapPin } from "lucide-react";
+import { Calendar, Clock, MapPin, Star } from "lucide-react";
 import { format } from "date-fns";
 import { api } from "../../../convex/_generated/api";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -31,6 +31,12 @@ export default function MyEventsPage() {
   // Get events for RSVPs
   const rsvpEvents = useQuery(
     api.rsvps.getEventsForUserRSVPs,
+    userProfile?._id ? { userId: userProfile._id } : "skip"
+  );
+
+  // Get favorited events
+  const favoriteEvents = useQuery(
+    api.favorites.getFavoritedEvents,
     userProfile?._id ? { userId: userProfile._id } : "skip"
   );
 
@@ -88,14 +94,24 @@ export default function MyEventsPage() {
     return rsvp?.status === 'interested';
   }) || [];
 
-  const EventList = ({ events, title }: { events: any[], title: string }) => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="w-5 h-5" />
-          {title} ({events.length})
-        </CardTitle>
-      </CardHeader>
+  const EventList = ({ events, title }: { events: any[], title: string }) => {
+    const getIcon = () => {
+      switch (title) {
+        case 'Favorites':
+          return <Star className="w-5 h-5" />;
+        default:
+          return <Calendar className="w-5 h-5" />;
+      }
+    };
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {getIcon()}
+            {title} ({events.length})
+          </CardTitle>
+        </CardHeader>
       <CardContent>
         {events.length === 0 ? (
           <p className="text-gray-500 text-center py-8">No events found</p>
@@ -158,7 +174,8 @@ export default function MyEventsPage() {
         )}
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <AppLayout>
@@ -184,17 +201,18 @@ export default function MyEventsPage() {
           }
         />
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-3">
           <EventList events={goingEvents} title="Going" />
           <EventList events={interestedEvents} title="Interested" />
+          <EventList events={favoriteEvents || []} title="Favorites" />
         </div>
 
-        {goingEvents.length === 0 && interestedEvents.length === 0 && (
+        {goingEvents.length === 0 && interestedEvents.length === 0 && (favoriteEvents?.length || 0) === 0 && (
           <div className="text-center py-12">
             <CalendarIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No events yet</h3>
             <p className="text-gray-600 mb-4">
-              Start exploring events and RSVP to see them here.
+              Start exploring events, RSVP, or add favorites to see them here.
             </p>
             <Link href="/dashboard">
               <Button>

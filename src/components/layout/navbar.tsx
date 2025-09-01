@@ -85,17 +85,21 @@ export function Navbar() {
           <div className="flex items-center gap-4">
             {/* Search - only for authenticated users */}
             {isSignedIn && (
-              <Button variant="ghost" size="sm" className="hidden sm:flex">
-                <Search className="w-4 h-4" />
-              </Button>
+              <Link href="/search">
+                <Button variant="ghost" size="sm" className="hidden sm:flex">
+                  <Search className="w-4 h-4" />
+                </Button>
+              </Link>
             )}
 
             {/* Create Event - only for authenticated users */}
             {isSignedIn && (
-              <Button size="sm" className="hidden sm:flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Create Event
-              </Button>
+              <Link href="/create-event">
+                <Button size="sm" className="hidden sm:flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Create Event
+                </Button>
+              </Link>
             )}
 
             {/* Notifications - only for authenticated users */}
@@ -211,6 +215,7 @@ export function Navbar() {
                       className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
+                      <Search className="w-4 h-4 inline mr-2" />
                       Search Events
                     </Link>
                     <Link
@@ -218,6 +223,7 @@ export function Navbar() {
                       className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
+                      <Plus className="w-4 h-4 inline mr-2" />
                       Create Event
                     </Link>
                   </div>
