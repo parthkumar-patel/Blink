@@ -101,9 +101,9 @@ export function EventFilters({
 
         {hasActiveFilters && (
           <div className="flex items-center gap-2 flex-wrap">
-            {selectedCategories.map((category) => (
+            {selectedCategories.map((category, index) => (
               <Badge
-                key={category}
+                key={`selected-${index}`}
                 variant="secondary"
                 className="flex items-center gap-1"
               >

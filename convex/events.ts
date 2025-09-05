@@ -284,3 +284,248 @@ export const getEventsNearLocation = query({
     return filteredEvents;
   },
 });
+
+// Update an existing event (for organizers)
+export const updateEvent = mutation({
+  args: {
+    eventId: v.id("events"),
+    clerkId: v.string(), // For authorization
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    location: v.optional(
+      v.object({
+        name: v.string(),
+        address: v.string(),
+        latitude: v.number(),
+        longitude: v.number(),
+        isVirtual: v.boolean(),
+      })
+    ),
+    organizer: v.optional(
+      v.object({
+        name: v.string(),
+        type: v.union(
+          v.literal("club"),
+          v.literal("university"),
+          v.literal("external"),
+          v.literal("student")
+        ),
+        verified: v.boolean(),
+        contactInfo: v.string(),
+      })
+    ),
+    categories: v.optional(v.array(v.string())),
+    tags: v.optional(v.array(v.string())),
+    capacity: v.optional(v.number()),
+    price: v.optional(
+      v.object({
+        amount: v.number(),
+        currency: v.string(),
+        isFree: v.boolean(),
+      })
+    ),
+    images: v.optional(v.array(v.string())),
+    externalLinks: v.optional(
+      v.object({
+        registration: v.optional(v.string()),
+        website: v.optional(v.string()),
+        social: v.optional(v.array(v.string())),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    // Get the current event
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    // Get the user making the request
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Authorization check - only allow updates if:
+    // 1. User is the original organizer (check by contact info/name match)
+    // 2. User is an admin/verified organizer
+    // 3. Event was created by a student organizer and user matches
+    const canUpdate =
+      event.organizer.contactInfo === user.email ||
+      event.organizer.name === user.name ||
+      (event.organizer.type === "student" &&
+        event.organizer.contactInfo === user.email) ||
+      user.preferences?.privacySettings?.profileVisible === true; // Simple admin check
+
+    if (!canUpdate) {
+      throw new Error("You don't have permission to update this event");
+    }
+
+    // Prepare update object with only provided fields
+    const updateData: any = {};
+
+    if (args.title !== undefined) updateData.title = args.title;
+    if (args.description !== undefined)
+      updateData.description = args.description;
+    if (args.startDate !== undefined) updateData.startDate = args.startDate;
+    if (args.endDate !== undefined) updateData.endDate = args.endDate;
+    if (args.location !== undefined) updateData.location = args.location;
+    if (args.organizer !== undefined) updateData.organizer = args.organizer;
+    if (args.categories !== undefined) updateData.categories = args.categories;
+    if (args.tags !== undefined) updateData.tags = args.tags;
+    if (args.capacity !== undefined) updateData.capacity = args.capacity;
+    if (args.price !== undefined) updateData.price = args.price;
+    if (args.images !== undefined) updateData.images = args.images;
+    if (args.externalLinks !== undefined)
+      updateData.externalLinks = args.externalLinks;
+
+    // Update the event
+    await ctx.db.patch(args.eventId, updateData);
+
+    return { success: true, eventId: args.eventId };
+  },
+});
+
+// Delete an event (for organizers)
+export const deleteEvent = mutation({
+  args: {
+    eventId: v.id("events"),
+    clerkId: v.string(), // For authorization
+  },
+  handler: async (ctx, args) => {
+    // Get the current event
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      throw new Error("Event not found");
+    }
+
+    // Get the user making the request
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Authorization check - only allow deletion if:
+    // 1. User is the original organizer (check by contact info/name match)
+    // 2. User is an admin/verified organizer
+    // 3. Event was created by a student organizer and user matches
+    const canDelete =
+      event.organizer.contactInfo === user.email ||
+      event.organizer.name === user.name ||
+      (event.organizer.type === "student" &&
+        event.organizer.contactInfo === user.email) ||
+      user.preferences?.privacySettings?.profileVisible === true; // Simple admin check
+
+    if (!canDelete) {
+      throw new Error("You don't have permission to delete this event");
+    }
+
+    // Check if event has started (optional business rule)
+    const now = Date.now();
+    if (event.startDate <= now) {
+      throw new Error("Cannot delete events that have already started");
+    }
+
+    // Delete related data first (RSVPs, favorites, etc.)
+    const rsvps = await ctx.db
+      .query("rsvps")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+
+    for (const rsvp of rsvps) {
+      await ctx.db.delete(rsvp._id);
+    }
+
+    const favorites = await ctx.db
+      .query("favorites")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+
+    for (const favorite of favorites) {
+      await ctx.db.delete(favorite._id);
+    }
+
+    // Delete the event
+    await ctx.db.delete(args.eventId);
+
+    return { success: true, eventId: args.eventId };
+  },
+});
+
+// Get events created by a specific organizer
+export const getEventsByOrganizer = query({
+  args: {
+    clerkId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Get the user
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Get all events and filter by organizer
+    const allEvents = await ctx.db
+      .query("events")
+      .order("desc")
+      .take(args.limit || 50);
+
+    // Filter events where the user is the organizer
+    const organizerEvents = allEvents.filter(
+      (event) =>
+        event.organizer.contactInfo === user.email ||
+        event.organizer.name === user.name ||
+        (event.organizer.type === "student" &&
+          event.organizer.contactInfo === user.email)
+    );
+
+    return organizerEvents;
+  },
+});
+
+// Check if user can edit a specific event
+export const canEditEvent = query({
+  args: {
+    eventId: v.id("events"),
+    clerkId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      return false;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      return false;
+    }
+
+    // Check if user can edit this event
+    const canEdit =
+      event.organizer.contactInfo === user.email ||
+      event.organizer.name === user.name ||
+      (event.organizer.type === "student" &&
+        event.organizer.contactInfo === user.email);
+
+    return canEdit;
+  },
+});

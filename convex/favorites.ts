@@ -162,3 +162,4 @@ export const getFavoriteStatuses = query({
     return statuses;
   },
 });
+

@@ -538,3 +538,4 @@ export default function CreateEventPage() {
     </AppLayout>
   );
 }
+

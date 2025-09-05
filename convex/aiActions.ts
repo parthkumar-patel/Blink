@@ -278,3 +278,4 @@ function getFallbackSummary(description: string): string {
     return truncated + "...";
   }
 }
+

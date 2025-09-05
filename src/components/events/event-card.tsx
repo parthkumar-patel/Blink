@@ -2,10 +2,22 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { Calendar, Clock, MapPin, Users, Star, ExternalLink } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  Star,
+  ExternalLink,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
 import { RecommendationBadge } from "./recommendation-badge";
 import Link from "next/link";
 
@@ -39,49 +51,52 @@ interface EventCardProps {
     recommendationScore?: number;
     reasonsToAttend?: string[];
   };
-  onRSVP?: (eventId: string, status: 'going' | 'interested') => void;
-  userRSVPStatus?: 'going' | 'interested' | null;
+  onRSVP?: (eventId: string, status: "going" | "interested") => void;
+  userRSVPStatus?: "going" | "interested" | null;
   onToggleFavorite?: (eventId: string) => void;
   isFavorited?: boolean;
   showRecommendationScore?: boolean;
   viewMode?: "list" | "grid";
 }
 
-export function EventCard({ 
-  event, 
-  onRSVP, 
-  userRSVPStatus, 
+export function EventCard({
+  event,
+  onRSVP,
+  userRSVPStatus,
   onToggleFavorite,
   isFavorited = false,
   showRecommendationScore = false,
-  viewMode = "grid"
+  viewMode = "grid",
 }: EventCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   const startDate = new Date(event.startDate);
   const endDate = new Date(event.endDate);
-  const isToday = format(startDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-  const isTomorrow = format(startDate, 'yyyy-MM-dd') === format(new Date(Date.now() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
-  
+  const isToday =
+    format(startDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+  const isTomorrow =
+    format(startDate, "yyyy-MM-dd") ===
+    format(new Date(Date.now() + 24 * 60 * 60 * 1000), "yyyy-MM-dd");
+
   const getDateLabel = () => {
-    if (isToday) return 'Today';
-    if (isTomorrow) return 'Tomorrow';
-    return format(startDate, 'MMM d, yyyy');
+    if (isToday) return "Today";
+    if (isTomorrow) return "Tomorrow";
+    return format(startDate, "MMM d, yyyy");
   };
 
   const getTimeLabel = () => {
-    const startTime = format(startDate, 'h:mm a');
-    const endTime = format(endDate, 'h:mm a');
+    const startTime = format(startDate, "h:mm a");
+    const endTime = format(endDate, "h:mm a");
     return `${startTime} - ${endTime}`;
   };
 
   const displayDescription = event.aiSummary || event.description;
   const shouldTruncate = displayDescription.length > 150;
-  const truncatedDescription = shouldTruncate 
-    ? displayDescription.substring(0, 150) + '...'
+  const truncatedDescription = shouldTruncate
+    ? displayDescription.substring(0, 150) + "..."
     : displayDescription;
 
-  const handleRSVP = (status: 'going' | 'interested') => {
+  const handleRSVP = (status: "going" | "interested") => {
     if (onRSVP) {
       onRSVP(event._id, status);
     }
@@ -105,7 +120,7 @@ export function EventCard({
                 className="w-full h-full object-cover"
               />
               {showRecommendationScore && event.recommendationScore && (
-                <RecommendationBadge 
+                <RecommendationBadge
                   score={event.recommendationScore}
                   reasons={event.reasonsToAttend}
                   className="absolute top-2 right-2"
@@ -120,17 +135,23 @@ export function EventCard({
                   {event.title}
                 </h3>
               </Link>
-              {!event.imageUrl && showRecommendationScore && event.recommendationScore && (
-                <RecommendationBadge 
-                  score={event.recommendationScore}
-                  reasons={event.reasonsToAttend}
-                />
-              )}
+              {!event.imageUrl &&
+                showRecommendationScore &&
+                event.recommendationScore && (
+                  <RecommendationBadge
+                    score={event.recommendationScore}
+                    reasons={event.reasonsToAttend}
+                  />
+                )}
             </div>
-            
+
             <div className="flex flex-wrap gap-1 mb-3">
-              {event.categories.slice(0, 3).map((category) => (
-                <Badge key={category} variant="secondary" className="text-xs">
+              {event.categories.slice(0, 3).map((category, index) => (
+                <Badge
+                  key={`${event._id}-category-${index}`}
+                  variant="secondary"
+                  className="text-xs"
+                >
                   {category}
                 </Badge>
               ))}
@@ -147,7 +168,9 @@ export function EventCard({
               </div>
               <div className="flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
-                <span>{event.location.isVirtual ? 'Virtual' : event.location.name}</span>
+                <span>
+                  {event.location.isVirtual ? "Virtual" : event.location.name}
+                </span>
               </div>
             </div>
 
@@ -162,10 +185,10 @@ export function EventCard({
                   <span>{event.rsvpCount} going</span>
                 </div>
                 <span className="font-medium">
-                  {event.price.isFree ? 'Free' : `$${event.price.amount}`}
+                  {event.price.isFree ? "Free" : `$${event.price.amount}`}
                 </span>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
@@ -173,23 +196,27 @@ export function EventCard({
                   onClick={handleToggleFavorite}
                   className="p-2"
                 >
-                  <Star 
-                    className={`w-4 h-4 ${isFavorited ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`}
+                  <Star
+                    className={`w-4 h-4 ${isFavorited ? "fill-yellow-400 text-yellow-400" : "text-gray-400"}`}
                   />
                 </Button>
                 <Button
-                  variant={userRSVPStatus === 'going' ? 'default' : 'outline'}
+                  variant={userRSVPStatus === "going" ? "default" : "outline"}
                   size="sm"
-                  onClick={() => handleRSVP('going')}
+                  onClick={() => handleRSVP("going")}
                 >
-                  {userRSVPStatus === 'going' ? 'Going' : 'Going'}
+                  {userRSVPStatus === "going" ? "Going" : "Going"}
                 </Button>
                 <Button
-                  variant={userRSVPStatus === 'interested' ? 'default' : 'outline'}
+                  variant={
+                    userRSVPStatus === "interested" ? "default" : "outline"
+                  }
                   size="sm"
-                  onClick={() => handleRSVP('interested')}
+                  onClick={() => handleRSVP("interested")}
                 >
-                  {userRSVPStatus === 'interested' ? 'Interested' : 'Interested'}
+                  {userRSVPStatus === "interested"
+                    ? "Interested"
+                    : "Interested"}
                 </Button>
               </div>
             </div>
@@ -209,7 +236,7 @@ export function EventCard({
             className="w-full h-full object-cover"
           />
           {showRecommendationScore && event.recommendationScore && (
-            <RecommendationBadge 
+            <RecommendationBadge
               score={event.recommendationScore}
               reasons={event.reasonsToAttend}
               className="absolute top-2 right-2"
@@ -217,7 +244,7 @@ export function EventCard({
           )}
         </div>
       )}
-      
+
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
@@ -226,10 +253,14 @@ export function EventCard({
                 {event.title}
               </h3>
             </Link>
-            
+
             <div className="flex flex-wrap gap-1 mb-3">
-              {event.categories.slice(0, 3).map((category) => (
-                <Badge key={category} variant="secondary" className="text-xs">
+              {event.categories.slice(0, 3).map((category, index) => (
+                <Badge
+                  key={`${event._id}-category-${index}`}
+                  variant="secondary"
+                  className="text-xs"
+                >
                   {category}
                 </Badge>
               ))}
@@ -240,13 +271,15 @@ export function EventCard({
               )}
             </div>
           </div>
-          
-          {!event.imageUrl && showRecommendationScore && event.recommendationScore && (
-            <RecommendationBadge 
-              score={event.recommendationScore}
-              reasons={event.reasonsToAttend}
-            />
-          )}
+
+          {!event.imageUrl &&
+            showRecommendationScore &&
+            event.recommendationScore && (
+              <RecommendationBadge
+                score={event.recommendationScore}
+                reasons={event.reasonsToAttend}
+              />
+            )}
         </div>
       </CardHeader>
 
@@ -256,19 +289,19 @@ export function EventCard({
             <Calendar className="w-4 h-4" />
             <span className="font-medium">{getDateLabel()}</span>
           </div>
-          
+
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Clock className="w-4 h-4" />
             <span>{getTimeLabel()}</span>
           </div>
-          
+
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <MapPin className="w-4 h-4" />
             <span className="line-clamp-1">
-              {event.location.isVirtual ? 'Virtual Event' : event.location.name}
+              {event.location.isVirtual ? "Virtual Event" : event.location.name}
             </span>
           </div>
-          
+
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-1">
               <Users className="w-4 h-4" />
@@ -277,17 +310,17 @@ export function EventCard({
                 <span className="text-gray-400">/ {event.maxCapacity}</span>
               )}
             </div>
-            
+
             <div className="flex items-center gap-1">
               <span className="font-medium">
-                {event.price.isFree ? 'Free' : `$${event.price.amount}`}
+                {event.price.isFree ? "Free" : `$${event.price.amount}`}
               </span>
             </div>
           </div>
         </div>
 
         <div className="text-sm text-gray-700">
-          <p className={isExpanded ? '' : 'line-clamp-3'}>
+          <p className={isExpanded ? "" : "line-clamp-3"}>
             {isExpanded ? displayDescription : truncatedDescription}
           </p>
           {shouldTruncate && (
@@ -295,7 +328,7 @@ export function EventCard({
               onClick={() => setIsExpanded(!isExpanded)}
               className="text-blue-600 hover:text-blue-800 font-medium mt-1"
             >
-              {isExpanded ? 'Show less' : 'Read more'}
+              {isExpanded ? "Show less" : "Read more"}
             </button>
           )}
         </div>
@@ -329,25 +362,25 @@ export function EventCard({
             onClick={handleToggleFavorite}
             className="p-2"
           >
-            <Star 
-              className={`w-4 h-4 ${isFavorited ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`}
+            <Star
+              className={`w-4 h-4 ${isFavorited ? "fill-yellow-400 text-yellow-400" : "text-gray-400"}`}
             />
           </Button>
           <Button
-            variant={userRSVPStatus === 'going' ? 'default' : 'outline'}
+            variant={userRSVPStatus === "going" ? "default" : "outline"}
             size="sm"
-            onClick={() => handleRSVP('going')}
+            onClick={() => handleRSVP("going")}
             className="flex-1"
           >
-            {userRSVPStatus === 'going' ? 'Going' : 'I\'m Going'}
+            {userRSVPStatus === "going" ? "Going" : "I'm Going"}
           </Button>
           <Button
-            variant={userRSVPStatus === 'interested' ? 'default' : 'outline'}
+            variant={userRSVPStatus === "interested" ? "default" : "outline"}
             size="sm"
-            onClick={() => handleRSVP('interested')}
+            onClick={() => handleRSVP("interested")}
             className="flex-1"
           >
-            {userRSVPStatus === 'interested' ? 'Interested' : 'Interested'}
+            {userRSVPStatus === "interested" ? "Interested" : "Interested"}
           </Button>
         </div>
       </CardFooter>
