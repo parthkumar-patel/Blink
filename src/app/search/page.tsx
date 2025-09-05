@@ -1,31 +1,45 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
-import { Search, Filter, MapPin, Calendar, Clock, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 import { AppLayout } from "@/components/layout/app-layout";
 import { PageHeader } from "@/components/layout/page-header";
 import { EventCard } from "@/components/events/event-card";
 import { EventFilters } from "@/components/filters/event-filters";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  getMapboxLocation,
+  getCurrentLocation,
+  filterEventsByDistance,
+} from "@/lib/utils/location";
 
-export default function SearchPage() {
+function SearchPageContent() {
   const { user } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialQuery = searchParams.get('q') || '';
+  const initialQuery = searchParams.get("q") || "";
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<{ start?: Date; end?: Date }>({});
-  const [priceFilter, setPriceFilter] = useState<'all' | 'free' | 'paid'>('all');
-  const [locationFilter, setLocationFilter] = useState<'all' | 'virtual' | 'in-person'>('all');
+  const [priceFilter, setPriceFilter] = useState<"all" | "free" | "paid">(
+    "all"
+  );
+  const [locationFilter, setLocationFilter] = useState<
+    "all" | "virtual" | "in-person"
+  >("all");
+  const [distanceFilter, setDistanceFilter] = useState<number>(1); // Default 1km for campus
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Debounce search query
@@ -40,24 +54,87 @@ export default function SearchPage() {
   // Update URL when search query changes
   useEffect(() => {
     if (debouncedQuery) {
-      router.replace(`/search?q=${encodeURIComponent(debouncedQuery)}`, { scroll: false });
+      router.replace(`/search?q=${encodeURIComponent(debouncedQuery)}`, {
+        scroll: false,
+      });
     } else {
-      router.replace('/search', { scroll: false });
+      router.replace("/search", { scroll: false });
     }
   }, [debouncedQuery, router]);
 
   // Get user profile
-  const userProfile = useQuery(
-    api.users.getCurrentUser,
-    user ? {} : "skip"
-  );
+  const userProfile = useQuery(api.users.getCurrentUser, user ? {} : "skip");
+
+  // Location detection function
+  const handleLocationDetect = async () => {
+    try {
+      // Try Mapbox location first for higher accuracy
+      let location;
+      try {
+        location = await getMapboxLocation();
+        console.log("Using Mapbox high-precision location");
+      } catch (mapboxError) {
+        console.log(
+          "Mapbox location failed, falling back to browser geolocation"
+        );
+        location = await getCurrentLocation();
+      }
+
+      setUserLocation(location);
+
+      // Update user profile with location if they have one
+      if (userProfile?.clerkId) {
+        try {
+          // Create a more descriptive address with accuracy info
+          const accuracyText = location.accuracy
+            ? ` (±${Math.round(location.accuracy)}m accuracy)`
+            : "";
+          const address = `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}${accuracyText}`;
+
+          await updateUserLocation({
+            clerkId: userProfile.clerkId,
+            location: {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              address: address,
+            },
+          });
+
+          console.log("High-precision location saved to profile", {
+            accuracy: location.accuracy,
+            coordinates: [location.latitude, location.longitude],
+          });
+        } catch (error) {
+          console.error("Error saving location to profile:", error);
+        }
+      }
+    } catch (error) {
+      console.error("Error getting location:", error);
+
+      // More specific error messages
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Unable to get your location. Please check your browser permissions and ensure you're using HTTPS.";
+
+      alert(errorMessage);
+    }
+  };
+
+  // Load user location from profile if available
+  useEffect(() => {
+    if (userProfile?.location && !userLocation) {
+      setUserLocation({
+        latitude: userProfile.location.latitude,
+        longitude: userProfile.location.longitude,
+      });
+    }
+  }, [userProfile, userLocation]);
 
   // Search events
   const searchResults = useQuery(
     api.events.searchEvents,
-    debouncedQuery.trim() 
-      ? { query: debouncedQuery.trim(), limit: 50 }
-      : "skip"
+    debouncedQuery.trim() ? { query: debouncedQuery.trim(), limit: 50 } : "skip"
   );
 
   // Get all events if no search query
@@ -72,15 +149,18 @@ export default function SearchPage() {
     userProfile?._id ? { userId: userProfile._id } : "skip"
   );
 
+  // Mutation to update user location
+  const updateUserLocation = useMutation(api.users.updateUserLocation);
+
   const events = debouncedQuery.trim() ? searchResults : allEvents;
 
   const favoriteStatuses = useQuery(
     api.favorites.getFavoriteStatuses,
-    userProfile?._id && events && events.length > 0 
-      ? { 
-          userId: userProfile._id, 
-          eventIds: events.map(e => e._id) 
-        } 
+    userProfile?._id && events && events.length > 0
+      ? {
+          userId: userProfile._id,
+          eventIds: events.map((e) => e._id),
+        }
       : "skip"
   );
 
@@ -93,8 +173,8 @@ export default function SearchPage() {
   const allCategories = useMemo(() => {
     if (!events) return [];
     const categorySet = new Set<string>();
-    events.forEach(event => {
-      event.categories.forEach(category => categorySet.add(category));
+    events.forEach((event) => {
+      event.categories.forEach((category) => categorySet.add(category));
     });
     return Array.from(categorySet).sort();
   }, [events]);
@@ -103,10 +183,14 @@ export default function SearchPage() {
   const filteredEvents = useMemo(() => {
     if (!events) return [];
 
-    return events.filter(event => {
+    let filtered = events.filter((event) => {
       // Category filter
       if (selectedCategories.length > 0) {
-        if (!event.categories.some(category => selectedCategories.includes(category))) {
+        if (
+          !event.categories.some((category) =>
+            selectedCategories.includes(category)
+          )
+        ) {
           return false;
         }
       }
@@ -119,55 +203,75 @@ export default function SearchPage() {
       }
 
       // Price filter
-      if (priceFilter === 'free' && !event.price.isFree) return false;
-      if (priceFilter === 'paid' && event.price.isFree) return false;
+      if (priceFilter === "free" && !event.price.isFree) return false;
+      if (priceFilter === "paid" && event.price.isFree) return false;
 
       // Location filter
-      if (locationFilter === 'virtual' && !event.location.isVirtual) return false;
-      if (locationFilter === 'in-person' && event.location.isVirtual) return false;
+      if (locationFilter === "virtual" && !event.location.isVirtual)
+        return false;
+      if (locationFilter === "in-person" && event.location.isVirtual)
+        return false;
 
       return true;
     });
-  }, [events, selectedCategories, dateRange, priceFilter, locationFilter]);
+
+    // Apply distance filter if user location is available
+    if (userLocation && distanceFilter) {
+      filtered = filterEventsByDistance(filtered, userLocation, distanceFilter);
+    }
+
+    return filtered;
+  }, [
+    events,
+    selectedCategories,
+    dateRange,
+    priceFilter,
+    locationFilter,
+    userLocation,
+    distanceFilter,
+  ]);
 
   // Create RSVP status map
   const rsvpStatusMap = useMemo(() => {
     if (!userRSVPs) return {};
-    const map: Record<string, 'going' | 'interested'> = {};
-    userRSVPs.forEach(rsvp => {
-      if (rsvp.status === 'going' || rsvp.status === 'interested') {
+    const map: Record<string, "going" | "interested"> = {};
+    userRSVPs.forEach((rsvp) => {
+      if (rsvp.status === "going" || rsvp.status === "interested") {
         map[rsvp.eventId] = rsvp.status;
       }
     });
     return map;
   }, [userRSVPs]);
 
-  const handleRSVP = async (eventId: string, status: 'going' | 'interested') => {
+  const handleRSVP = async (
+    eventId: string,
+    status: "going" | "interested"
+  ) => {
     if (!userProfile?._id) return;
 
     try {
-      const existingRSVP = userRSVPs?.find(rsvp => rsvp.eventId === eventId);
-      
+      const existingRSVP = userRSVPs?.find((rsvp) => rsvp.eventId === eventId);
+
       if (existingRSVP) {
         if (existingRSVP.status === status) {
           await updateRSVP({
             rsvpId: existingRSVP._id,
-            status: 'not_going'
+            status: "not_going",
           });
         } else {
           await updateRSVP({
             rsvpId: existingRSVP._id,
-            status
+            status,
           });
         }
       } else {
         await createRSVP({
-          eventId: eventId as any,
-          status
+          eventId: eventId as Id<"events">,
+          status,
         });
       }
     } catch (error) {
-      console.error('Error updating RSVP:', error);
+      console.error("Error updating RSVP:", error);
     }
   };
 
@@ -177,26 +281,28 @@ export default function SearchPage() {
     try {
       await toggleFavorite({
         userId: userProfile._id,
-        eventId: eventId as any
+        eventId: eventId as Id<"events">,
       });
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      console.error("Error toggling favorite:", error);
     }
   };
 
   const clearAllFilters = () => {
     setSelectedCategories([]);
     setDateRange({});
-    setPriceFilter('all');
-    setLocationFilter('all');
+    setPriceFilter("all");
+    setLocationFilter("all");
+    setDistanceFilter(25);
   };
 
-  const hasActiveFilters = 
+  const hasActiveFilters =
     selectedCategories.length > 0 ||
     dateRange.start ||
     dateRange.end ||
-    priceFilter !== 'all' ||
-    locationFilter !== 'all';
+    priceFilter !== "all" ||
+    locationFilter !== "all" ||
+    (userLocation && distanceFilter !== 25);
 
   return (
     <AppLayout>
@@ -222,7 +328,7 @@ export default function SearchPage() {
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => setSearchQuery("")}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <X className="w-5 h-5" />
@@ -243,6 +349,10 @@ export default function SearchPage() {
           onPriceFilterChange={setPriceFilter}
           locationFilter={locationFilter}
           onLocationFilterChange={setLocationFilter}
+          distanceFilter={distanceFilter}
+          onDistanceFilterChange={setDistanceFilter}
+          userLocation={userLocation || undefined}
+          onLocationDetect={handleLocationDetect}
           isOpen={filtersOpen}
           onToggle={() => setFiltersOpen(!filtersOpen)}
         />
@@ -252,11 +362,12 @@ export default function SearchPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                {debouncedQuery ? 'Search Results' : 'All Events'}
+                {debouncedQuery ? "Search Results" : "All Events"}
               </h2>
               <p className="text-gray-600">
                 {debouncedQuery && `Results for "${debouncedQuery}" • `}
-                {filteredEvents?.length || 0} event{filteredEvents?.length !== 1 ? 's' : ''} found
+                {filteredEvents?.length || 0} event
+                {filteredEvents?.length !== 1 ? "s" : ""} found
               </p>
             </div>
 
@@ -277,7 +388,14 @@ export default function SearchPage() {
             <div className="mb-6">
               <p className="text-sm text-gray-600 mb-3">Popular searches:</p>
               <div className="flex flex-wrap gap-2">
-                {['hackathon', 'workshop', 'career fair', 'networking', 'study group', 'tech talk'].map(term => (
+                {[
+                  "hackathon",
+                  "workshop",
+                  "career fair",
+                  "networking",
+                  "study group",
+                  "tech talk",
+                ].map((term) => (
                   <Button
                     key={term}
                     variant="outline"
@@ -303,19 +421,15 @@ export default function SearchPage() {
           <div className="text-center py-12">
             <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {debouncedQuery ? 'No events found' : 'No events available'}
+              {debouncedQuery ? "No events found" : "No events available"}
             </h3>
             <p className="text-gray-600 mb-4">
-              {debouncedQuery 
+              {debouncedQuery
                 ? `We couldn't find any events matching "${debouncedQuery}". Try different keywords or check your filters.`
-                : 'There are no events available at the moment. Check back later!'
-              }
+                : "There are no events available at the moment. Check back later!"}
             </p>
             {hasActiveFilters && (
-              <Button
-                variant="outline"
-                onClick={clearAllFilters}
-              >
+              <Button variant="outline" onClick={clearAllFilters}>
                 Clear all filters
               </Button>
             )}
@@ -337,5 +451,23 @@ export default function SearchPage() {
         )}
       </div>
     </AppLayout>
+  );
+}
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppLayout>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">Loading search...</span>
+            </div>
+          </div>
+        </AppLayout>
+      }
+    >
+      <SearchPageContent />
+    </Suspense>
   );
 }

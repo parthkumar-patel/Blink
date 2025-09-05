@@ -93,20 +93,49 @@ export const scrapeAllClubs = action({
 
       // Scrape clubs by going through each letter and handling pagination
       const allClubLinks: Array<{ name: string; url: string }> = [];
-      const letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0-9'];
-      
+      const letters = [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "m",
+        "n",
+        "o",
+        "p",
+        "q",
+        "r",
+        "s",
+        "t",
+        "u",
+        "v",
+        "w",
+        "x",
+        "y",
+        "z",
+        "0-9",
+      ];
+
       for (const letter of letters) {
         console.log(`Scraping clubs for letter: ${letter}`);
         let currentPage = 1;
         let hasMorePages = true;
-        
+
         while (hasMorePages) {
-          const pageUrl = currentPage === 1 
-            ? `https://amsclubs.ca/all-clubs/letter/${letter}/`
-            : `https://amsclubs.ca/all-clubs/letter/${letter}/${currentPage}/`;
-          
+          const pageUrl =
+            currentPage === 1
+              ? `https://amsclubs.ca/all-clubs/letter/${letter}/`
+              : `https://amsclubs.ca/all-clubs/letter/${letter}/${currentPage}/`;
+
           console.log(`Scraping page: ${pageUrl}`);
-          
+
           try {
             const pageResult = await app.scrape(pageUrl, {
               formats: ["markdown", "html"],
@@ -115,14 +144,18 @@ export const scrapeAllClubs = action({
             });
 
             if (!pageResult) {
-              console.log(`No data returned for ${pageUrl}, moving to next letter`);
+              console.log(
+                `No data returned for ${pageUrl}, moving to next letter`
+              );
               break;
             }
 
             const clubLinksOnPage = extractClubLinksFromLetterPage(pageResult);
             allClubLinks.push(...clubLinksOnPage);
-            console.log(`Found ${clubLinksOnPage.length} clubs on page ${currentPage} for letter ${letter}`);
-            
+            console.log(
+              `Found ${clubLinksOnPage.length} clubs on page ${currentPage} for letter ${letter}`
+            );
+
             // Check if there are more pages by looking for pagination
             const hasNextPage = checkForNextPage(pageResult, currentPage);
             if (!hasNextPage) {
@@ -130,19 +163,21 @@ export const scrapeAllClubs = action({
             } else {
               currentPage++;
               // Add delay between page requests
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              await new Promise((resolve) => setTimeout(resolve, 1000));
             }
           } catch (error) {
             console.error(`Error scraping ${pageUrl}:`, error);
             break;
           }
         }
-        
+
         // Add delay between letters to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
-      
-      console.log(`Total clubs found across all letters: ${allClubLinks.length}`);
+
+      console.log(
+        `Total clubs found across all letters: ${allClubLinks.length}`
+      );
 
       const results = [];
       let successCount = 0;
@@ -238,7 +273,9 @@ function extractClubInfo(scrapedData: any) {
   const name = nameMatch ? nameMatch[1].trim() : "";
 
   // Extract description (usually the first paragraph after the title)
-  const descriptionMatch = markdown.match(/^#.+\n\n(.+?)(?:\n\n|\n##|$)/s);
+  const descriptionMatch = markdown.match(
+    /^#.+?\n\n([\s\S]+?)(?:\n\n|\n##|$)/m
+  );
   const description = descriptionMatch ? descriptionMatch[1].trim() : "";
 
   // Extract website URL
@@ -266,8 +303,8 @@ function extractClubInfo(scrapedData: any) {
 
   // Extract location
   const locationMatch =
-    markdown.match(/Location[:\s]*\n?(.+?)(?:\n\n|##|$)/is) ||
-    markdown.match(/Address[:\s]*\n?(.+?)(?:\n\n|##|$)/is);
+    markdown.match(/Location[:\s]*\n?([\s\S]+?)(?:\n\n|##|$)/i) ||
+    markdown.match(/Address[:\s]*\n?([\s\S]+?)(?:\n\n|##|$)/i);
 
   let location = undefined;
   if (locationMatch) {
@@ -470,11 +507,12 @@ function extractClubLinksFromLetterPage(
 
   // Look for "Discover" links which lead to individual club pages
   // Pattern: [Club Name] followed by "Discover" link
-  
+
   // First try to extract from markdown
   // Look for club names followed by Discover links
-  const discoverLinkRegex = /\[([^\]]+)\]\((https:\/\/amsclubs\.ca\/[^\/\)]+\/)\)[^]*?Discover/g;
-  
+  const discoverLinkRegex =
+    /\[([^\]]+)\]\((https:\/\/amsclubs\.ca\/[^\/\)]+\/)\)[^]*?Discover/g;
+
   let match;
   while ((match = discoverLinkRegex.exec(markdown)) !== null) {
     const name = match[1].trim();
@@ -494,14 +532,15 @@ function extractClubLinksFromLetterPage(
 
   // Alternative approach: Look for club titles followed by descriptions and Discover links
   if (clubLinks.length === 0) {
-    // Look for pattern: "AMS [Club Name] at UBC" followed by description and "Discover" 
+    // Look for pattern: "AMS [Club Name] at UBC" followed by description and "Discover"
     const clubPattern = /(AMS .+ at UBC|[A-Z][^\\n]+Club[^\\n]*)/g;
     const clubMatches = markdown.match(clubPattern) || [];
-    
+
     // Also look for discover links in HTML
-    const htmlDiscoverRegex = /<a[^>]+href="(https:\/\/amsclubs\.ca\/[^\/\"]+\/)"[^>]*>[^<]*Discover[^<]*<\/a>/gi;
+    const htmlDiscoverRegex =
+      /<a[^>]+href="(https:\/\/amsclubs\.ca\/[^\/\"]+\/)"[^>]*>[^<]*Discover[^<]*<\/a>/gi;
     const discoverUrls: string[] = [];
-    
+
     let htmlMatch;
     while ((htmlMatch = htmlDiscoverRegex.exec(html)) !== null) {
       discoverUrls.push(htmlMatch[1]);
@@ -512,7 +551,7 @@ function extractClubLinksFromLetterPage(
       if (index < discoverUrls.length) {
         const cleanName = clubName.trim();
         const url = discoverUrls[index];
-        
+
         if (
           !cleanName.toLowerCase().includes("discover") &&
           !url.includes("/wp-content/") &&
@@ -526,13 +565,14 @@ function extractClubLinksFromLetterPage(
 
   // Fallback: Look for any AMS club links in the HTML
   if (clubLinks.length === 0) {
-    const fallbackRegex = /<a[^>]+href="(https:\/\/amsclubs\.ca\/([^\/\"]+)\/)"[^>]*>([^<]+)<\/a>/gi;
-    
+    const fallbackRegex =
+      /<a[^>]+href="(https:\/\/amsclubs\.ca\/([^\/\"]+)\/)"[^>]*>([^<]+)<\/a>/gi;
+
     while ((match = fallbackRegex.exec(html)) !== null) {
       const url = match[1];
       const slug = match[2];
       const linkText = match[3].trim();
-      
+
       // Skip navigation links and use slug to generate club name
       if (
         !linkText.toLowerCase().includes("discover") &&
@@ -542,10 +582,11 @@ function extractClubLinksFromLetterPage(
         slug.length > 2
       ) {
         // Generate club name from slug if linkText is not descriptive
-        const clubName = linkText.includes("UBC") || linkText.includes("AMS") 
-          ? linkText 
-          : `AMS ${slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} at UBC`;
-        
+        const clubName =
+          linkText.includes("UBC") || linkText.includes("AMS")
+            ? linkText
+            : `AMS ${slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())} at UBC`;
+
         clubLinks.push({ name: clubName, url });
       }
     }
@@ -566,24 +607,27 @@ function checkForNextPage(scrapedData: any, currentPage: number): boolean {
 
   // Look for pagination indicators
   const nextPageNumber = currentPage + 1;
-  
+
   // Check for next page number in pagination
-  const hasNextPageNumber = 
-    markdown.includes(`${nextPageNumber}`) || 
+  const hasNextPageNumber =
+    markdown.includes(`${nextPageNumber}`) ||
     html.includes(`>${nextPageNumber}<`) ||
     html.includes(`href=".*/${nextPageNumber}/"`);
-  
+
   // Also check for "Next" or ">" pagination links
-  const hasNextLink = 
-    markdown.toLowerCase().includes('next') ||
-    html.includes('page-numbers-next') ||
-    html.includes('pagination-next') ||
-    html.includes('»') ||
-    html.includes('&raquo;');
+  const hasNextLink =
+    markdown.toLowerCase().includes("next") ||
+    html.includes("page-numbers-next") ||
+    html.includes("pagination-next") ||
+    html.includes("»") ||
+    html.includes("&raquo;");
 
   // Check if current page number appears in a sequence (e.g., "1 2 3 4")
-  const paginationPattern = new RegExp(`\\b${currentPage}\\s+${nextPageNumber}\\b`);
-  const hasSequentialPages = paginationPattern.test(markdown) || paginationPattern.test(html);
+  const paginationPattern = new RegExp(
+    `\\b${currentPage}\\s+${nextPageNumber}\\b`
+  );
+  const hasSequentialPages =
+    paginationPattern.test(markdown) || paginationPattern.test(html);
 
   return hasNextPageNumber || hasNextLink || hasSequentialPages;
 }

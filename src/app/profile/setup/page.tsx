@@ -8,8 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { MapPin, GraduationCap, Heart, ArrowRight, ArrowLeft, Check } from "lucide-react";
+import {
+  MapPin,
+  GraduationCap,
+  Heart,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+} from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
+import { LocationDetector } from "@/components/location/location-detector";
 
 const STEPS = [
   { id: 1, title: "Basic Info", icon: GraduationCap },
@@ -18,31 +26,31 @@ const STEPS = [
 ];
 
 const INTERESTS = [
-  { id: 'tech', label: 'Technology', emoji: '💻' },
-  { id: 'career', label: 'Career Development', emoji: '💼' },
-  { id: 'academic', label: 'Academic', emoji: '📚' },
-  { id: 'workshop', label: 'Workshops', emoji: '🛠️' },
-  { id: 'social', label: 'Social Events', emoji: '🎉' },
-  { id: 'cultural', label: 'Cultural', emoji: '🌍' },
-  { id: 'music', label: 'Music', emoji: '🎵' },
-  { id: 'arts', label: 'Arts & Creative', emoji: '🎨' },
-  { id: 'sports', label: 'Sports & Fitness', emoji: '⚽' },
-  { id: 'food', label: 'Food & Dining', emoji: '🍕' },
-  { id: 'volunteering', label: 'Volunteering', emoji: '🤝' },
-  { id: 'networking', label: 'Networking', emoji: '🤝' },
-  { id: 'entrepreneurship', label: 'Entrepreneurship', emoji: '🚀' },
-  { id: 'research', label: 'Research', emoji: '🔬' },
-  { id: 'gaming', label: 'Gaming', emoji: '🎮' },
-  { id: 'photography', label: 'Photography', emoji: '📸' },
-  { id: 'travel', label: 'Travel', emoji: '✈️' },
+  { id: "tech", label: "Technology", emoji: "💻" },
+  { id: "career", label: "Career Development", emoji: "💼" },
+  { id: "academic", label: "Academic", emoji: "📚" },
+  { id: "workshop", label: "Workshops", emoji: "🛠️" },
+  { id: "social", label: "Social Events", emoji: "🎉" },
+  { id: "cultural", label: "Cultural", emoji: "🌍" },
+  { id: "music", label: "Music", emoji: "🎵" },
+  { id: "arts", label: "Arts & Creative", emoji: "🎨" },
+  { id: "sports", label: "Sports & Fitness", emoji: "⚽" },
+  { id: "food", label: "Food & Dining", emoji: "🍕" },
+  { id: "volunteering", label: "Volunteering", emoji: "🤝" },
+  { id: "networking", label: "Networking", emoji: "🤝" },
+  { id: "entrepreneurship", label: "Entrepreneurship", emoji: "🚀" },
+  { id: "research", label: "Research", emoji: "🔬" },
+  { id: "gaming", label: "Gaming", emoji: "🎮" },
+  { id: "photography", label: "Photography", emoji: "📸" },
+  { id: "travel", label: "Travel", emoji: "✈️" },
 ];
 
 const YEARS = [
-  { value: 'freshman', label: '1st Year (Freshman)' },
-  { value: 'sophomore', label: '2nd Year (Sophomore)' },
-  { value: 'junior', label: '3rd Year (Junior)' },
-  { value: 'senior', label: '4th Year (Senior)' },
-  { value: 'graduate', label: 'Graduate Student' },
+  { value: "freshman", label: "1st Year (Freshman)" },
+  { value: "sophomore", label: "2nd Year (Sophomore)" },
+  { value: "junior", label: "3rd Year (Junior)" },
+  { value: "senior", label: "4th Year (Senior)" },
+  { value: "graduate", label: "Graduate Student" },
 ];
 
 export default function ProfileSetupPage() {
@@ -50,18 +58,20 @@ export default function ProfileSetupPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Form data
   const [formData, setFormData] = useState({
-    university: 'UBC',
-    year: '' as any,
+    university: "UBC",
+    year: "" as any,
     interests: [] as string[],
     location: {
-      address: '',
+      address: "",
       latitude: 0,
       longitude: 0,
     },
   });
+
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
 
   const createOrUpdateUser = useMutation(api.users.createOrUpdateUser);
 
@@ -78,66 +88,58 @@ export default function ProfileSetupPage() {
   };
 
   const toggleInterest = (interestId: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       interests: prev.interests.includes(interestId)
-        ? prev.interests.filter(id => id !== interestId)
-        : [...prev.interests, interestId]
+        ? prev.interests.filter((id) => id !== interestId)
+        : [...prev.interests, interestId],
     }));
   };
 
-  const handleLocationDetection = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setFormData(prev => ({
-            ...prev,
-            location: {
-              address: 'Vancouver, BC (Current Location)',
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-            }
-          }));
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-          // Default to UBC location
-          setFormData(prev => ({
-            ...prev,
-            location: {
-              address: 'UBC Campus, Vancouver, BC',
-              latitude: 49.2606,
-              longitude: -123.2460,
-            }
-          }));
-        }
-      );
-    }
+  const handleLocationDetected = (location: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+  }) => {
+    setFormData((prev) => ({
+      ...prev,
+      location: {
+        address: "Vancouver, BC (Current Location)",
+        latitude: location.latitude,
+        longitude: location.longitude,
+      },
+    }));
+    setLocationAccuracy(location.accuracy || null);
+  };
+
+  const handleLocationError = (error: string) => {
+    console.error("Location detection error:", error);
+    // Optionally show error to user or set default location
   };
 
   const handleSubmit = async () => {
     if (!user) return;
-    
+
     setIsSubmitting(true);
     try {
       const result = await createOrUpdateUser({
         clerkId: user.id,
-        email: user.primaryEmailAddress?.emailAddress || '',
-        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User',
+        email: user.primaryEmailAddress?.emailAddress || "",
+        name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User",
         university: formData.university,
         year: formData.year,
         interests: formData.interests,
         location: formData.location.address ? formData.location : undefined,
       });
-      
+
       // Small delay to ensure the data is saved
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       // Redirect to profile page to show the completed profile
-      router.push('/profile');
+      router.push("/profile");
     } catch (error) {
-      console.error('Error creating profile:', error);
-      alert('There was an error saving your profile. Please try again.');
+      console.error("Error creating profile:", error);
+      alert("There was an error saving your profile. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -146,7 +148,7 @@ export default function ProfileSetupPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return formData.year !== '';
+        return formData.year !== "";
       case 2:
         return formData.interests.length > 0;
       case 3:
@@ -178,33 +180,44 @@ export default function ProfileSetupPage() {
               const Icon = step.icon;
               const isActive = currentStep === step.id;
               const isCompleted = currentStep > step.id;
-              
+
               return (
                 <div key={step.id} className="flex items-center">
-                  <div className={`
+                  <div
+                    className={`
                     flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors
-                    ${isCompleted 
-                      ? 'bg-green-500 border-green-500 text-white' 
-                      : isActive 
-                        ? 'bg-blue-600 border-blue-600 text-white' 
-                        : 'bg-white border-gray-300 text-gray-400'
+                    ${
+                      isCompleted
+                        ? "bg-green-500 border-green-500 text-white"
+                        : isActive
+                          ? "bg-blue-600 border-blue-600 text-white"
+                          : "bg-white border-gray-300 text-gray-400"
                     }
-                  `}>
+                  `}
+                  >
                     {isCompleted ? (
                       <Check className="w-5 h-5" />
                     ) : (
                       <Icon className="w-5 h-5" />
                     )}
                   </div>
-                  <span className={`ml-2 text-sm font-medium ${
-                    isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-400'
-                  }`}>
+                  <span
+                    className={`ml-2 text-sm font-medium ${
+                      isActive
+                        ? "text-blue-600"
+                        : isCompleted
+                          ? "text-green-600"
+                          : "text-gray-400"
+                    }`}
+                  >
                     {step.title}
                   </span>
                   {index < STEPS.length - 1 && (
-                    <div className={`w-12 h-0.5 mx-4 ${
-                      isCompleted ? 'bg-green-500' : 'bg-gray-300'
-                    }`} />
+                    <div
+                      className={`w-12 h-0.5 mx-4 ${
+                        isCompleted ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                    />
                   )}
                 </div>
               );
@@ -217,7 +230,9 @@ export default function ProfileSetupPage() {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              {React.createElement(STEPS[currentStep - 1].icon, { className: "w-5 h-5" })}
+              {React.createElement(STEPS[currentStep - 1].icon, {
+                className: "w-5 h-5",
+              })}
               Step {currentStep}: {STEPS[currentStep - 1].title}
             </CardTitle>
           </CardHeader>
@@ -230,7 +245,9 @@ export default function ProfileSetupPage() {
                     University
                   </label>
                   <div className="p-3 bg-gray-50 rounded-lg border">
-                    <span className="text-gray-900 font-medium">University of British Columbia (UBC)</span>
+                    <span className="text-gray-900 font-medium">
+                      University of British Columbia (UBC)
+                    </span>
                   </div>
                 </div>
 
@@ -242,11 +259,13 @@ export default function ProfileSetupPage() {
                     {YEARS.map((year) => (
                       <button
                         key={year.value}
-                        onClick={() => setFormData(prev => ({ ...prev, year: year.value }))}
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, year: year.value }))
+                        }
                         className={`p-4 text-left rounded-lg border-2 transition-colors ${
                           formData.year === year.value
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                            ? "border-blue-500 bg-blue-50 text-blue-700"
+                            : "border-gray-200 hover:border-gray-300 bg-white"
                         }`}
                       >
                         <div className="font-medium">{year.label}</div>
@@ -265,7 +284,8 @@ export default function ProfileSetupPage() {
                     What are you interested in? *
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    Select all that apply. We'll use this to recommend events you'll love!
+                    Select all that apply. We'll use this to recommend events
+                    you'll love!
                   </p>
                 </div>
 
@@ -276,12 +296,14 @@ export default function ProfileSetupPage() {
                       onClick={() => toggleInterest(interest.id)}
                       className={`p-4 rounded-lg border-2 transition-all text-left ${
                         formData.interests.includes(interest.id)
-                          ? 'border-blue-500 bg-blue-50 text-blue-700 scale-105'
-                          : 'border-gray-200 hover:border-gray-300 bg-white hover:scale-102'
+                          ? "border-blue-500 bg-blue-50 text-blue-700 scale-105"
+                          : "border-gray-200 hover:border-gray-300 bg-white hover:scale-102"
                       }`}
                     >
                       <div className="text-2xl mb-1">{interest.emoji}</div>
-                      <div className="font-medium text-sm">{interest.label}</div>
+                      <div className="font-medium text-sm">
+                        {interest.label}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -293,9 +315,15 @@ export default function ProfileSetupPage() {
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {formData.interests.map((interestId) => {
-                        const interest = INTERESTS.find(i => i.id === interestId);
+                        const interest = INTERESTS.find(
+                          (i) => i.id === interestId
+                        );
                         return (
-                          <Badge key={interestId} variant="secondary" className="bg-green-100 text-green-800">
+                          <Badge
+                            key={interestId}
+                            variant="secondary"
+                            className="bg-green-100 text-green-800"
+                          >
                             {interest?.emoji} {interest?.label}
                           </Badge>
                         );
@@ -314,34 +342,55 @@ export default function ProfileSetupPage() {
                     Where are you located?
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    This helps us show you events near you. You can skip this step if you prefer.
+                    This helps us show you events near you with high precision.
+                    You can skip this step if you prefer.
                   </p>
                 </div>
 
-                <div className="space-y-4">
-                  <Button
-                    onClick={handleLocationDetection}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <MapPin className="w-4 h-4 mr-2" />
-                    Use Current Location
-                  </Button>
+                <LocationDetector
+                  onLocationDetected={handleLocationDetected}
+                  onError={handleLocationError}
+                  currentLocation={
+                    formData.location.latitude && formData.location.longitude
+                      ? {
+                          latitude: formData.location.latitude,
+                          longitude: formData.location.longitude,
+                        }
+                      : null
+                  }
+                  className="mb-4"
+                />
 
-                  {formData.location.address && (
-                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                      <div className="flex items-center gap-2 text-green-800">
-                        <MapPin className="w-4 h-4" />
-                        <span className="font-medium">{formData.location.address}</span>
+                {formData.location.address && locationAccuracy && (
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2 text-blue-800 mb-2">
+                      <MapPin className="w-4 h-4" />
+                      <span className="font-medium">
+                        Location Set Successfully
+                      </span>
+                    </div>
+                    <div className="text-sm text-blue-700">
+                      <div>Address: {formData.location.address}</div>
+                      <div>
+                        Accuracy: {Math.round(locationAccuracy)}m (
+                        {locationAccuracy < 10
+                          ? "Very High"
+                          : locationAccuracy < 50
+                            ? "High"
+                            : locationAccuracy < 100
+                              ? "Medium"
+                              : "Low"}{" "}
+                        precision)
                       </div>
                     </div>
-                  )}
-
-                  <div className="text-center">
-                    <p className="text-sm text-gray-500">
-                      Don't worry, you can always update this later in your profile settings.
-                    </p>
                   </div>
+                )}
+
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">
+                    Don't worry, you can always update this later in your
+                    profile settings.
+                  </p>
                 </div>
               </div>
             )}

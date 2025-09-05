@@ -150,6 +150,35 @@ export const updateUserProfile = mutation({
   },
 });
 
+// Update user location
+export const updateUserLocation = mutation({
+  args: {
+    clerkId: v.string(),
+    location: v.object({
+      latitude: v.number(),
+      longitude: v.number(),
+      address: v.string(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await ctx.db.patch(user._id, {
+      location: args.location,
+      lastActiveAt: Date.now(),
+    });
+
+    return user._id;
+  },
+});
+
 // Update user preferences
 export const updateUserPreferences = mutation({
   args: {

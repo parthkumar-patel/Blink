@@ -6,6 +6,7 @@ import { Calendar, Clock, MapPin, Users, Star, ExternalLink } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { RecommendationBadge } from "./recommendation-badge";
 import Link from "next/link";
 
 interface EventCardProps {
@@ -36,6 +37,7 @@ interface EventCardProps {
     imageUrl?: string;
     sourceUrl?: string;
     recommendationScore?: number;
+    reasonsToAttend?: string[];
   };
   onRSVP?: (eventId: string, status: 'going' | 'interested') => void;
   userRSVPStatus?: 'going' | 'interested' | null;
@@ -103,10 +105,11 @@ export function EventCard({
                 className="w-full h-full object-cover"
               />
               {showRecommendationScore && event.recommendationScore && (
-                <div className="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-                  <Star className="w-3 h-3" />
-                  {event.recommendationScore}
-                </div>
+                <RecommendationBadge 
+                  score={event.recommendationScore}
+                  reasons={event.reasonsToAttend}
+                  className="absolute top-2 right-2"
+                />
               )}
             </div>
           )}
@@ -118,10 +121,10 @@ export function EventCard({
                 </h3>
               </Link>
               {!event.imageUrl && showRecommendationScore && event.recommendationScore && (
-                <div className="bg-blue-600 text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-                  <Star className="w-3 h-3" />
-                  {event.recommendationScore}
-                </div>
+                <RecommendationBadge 
+                  score={event.recommendationScore}
+                  reasons={event.reasonsToAttend}
+                />
               )}
             </div>
             
@@ -206,10 +209,11 @@ export function EventCard({
             className="w-full h-full object-cover"
           />
           {showRecommendationScore && event.recommendationScore && (
-            <div className="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-              <Star className="w-3 h-3" />
-              {event.recommendationScore}
-            </div>
+            <RecommendationBadge 
+              score={event.recommendationScore}
+              reasons={event.reasonsToAttend}
+              className="absolute top-2 right-2"
+            />
           )}
         </div>
       )}
@@ -238,10 +242,10 @@ export function EventCard({
           </div>
           
           {!event.imageUrl && showRecommendationScore && event.recommendationScore && (
-            <div className="bg-blue-600 text-white px-2 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-              <Star className="w-3 h-3" />
-              {event.recommendationScore}
-            </div>
+            <RecommendationBadge 
+              score={event.recommendationScore}
+              reasons={event.reasonsToAttend}
+            />
           )}
         </div>
       </CardHeader>
