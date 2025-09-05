@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MatchNotificationBadge } from "@/components/matches/match-notification-badge";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -34,6 +35,8 @@ export function Navbar() {
     { name: "Events", href: "/events" },
     { name: "Calendar", href: "/calendar" },
     { name: "Clubs", href: "/clubs" },
+    { name: "Matches", href: "/matches" },
+    { name: "Friends", href: "/friends" },
     { name: "My Events", href: "/my-events" },
     { name: "Discover", href: "/discover" },
   ];
@@ -44,6 +47,7 @@ export function Navbar() {
     { name: "My RSVPs", href: "/my-events" },
     { name: "Manage Events", href: "/my-events/manage" },
     { name: "Notifications", href: "/notifications" },
+    { name: "Admin Tools", href: "/admin" },
   ];
 
   const navigation = isSignedIn ? authenticatedNavigation : publicNavigation;
@@ -83,7 +87,10 @@ export function Navbar() {
                     : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                 }`}
               >
-                {item.name}
+                <span className="flex items-center">
+                  {item.name}
+                  {item.name === "Matches" && isSignedIn && <MatchNotificationBadge />}
+                </span>
               </Link>
             ))}
           </div>
@@ -207,7 +214,10 @@ export function Navbar() {
                   }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  {item.name}
+                  <span className="flex items-center">
+                    {item.name}
+                    {item.name === "Matches" && isSignedIn && <MatchNotificationBadge />}
+                  </span>
                 </Link>
               ))}
 

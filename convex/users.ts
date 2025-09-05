@@ -33,6 +33,61 @@ export const getUserByClerkId = query({
   },
 });
 
+// Get user profile by user ID (respects privacy settings and friendship status)
+export const getUserById = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      return null;
+    }
+    
+    const identity = await ctx.auth.getUserIdentity();
+    const currentUser = identity ? await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique() : null;
+    
+    // Always allow viewing own profile
+    if (currentUser && currentUser._id === args.userId) {
+      return user;
+    }
+    
+    // If profile is public, allow viewing
+    if (user.preferences?.privacySettings?.profileVisible) {
+      return user;
+    }
+    
+    // If profile is private, check if viewer is a friend
+    if (currentUser) {
+      // Check for accepted friendship
+      const friendship = await ctx.db
+        .query("friendConnections")
+        .withIndex("by_requester_receiver", (q) =>
+          q.eq("requesterId", currentUser._id).eq("receiverId", args.userId)
+        )
+        .filter((q) => q.eq(q.field("status"), "accepted"))
+        .first();
+        
+      const reverseFriendship = await ctx.db
+        .query("friendConnections")
+        .withIndex("by_requester_receiver", (q) =>
+          q.eq("requesterId", args.userId).eq("receiverId", currentUser._id)
+        )
+        .filter((q) => q.eq(q.field("status"), "accepted"))
+        .first();
+        
+      // Allow friends to view private profiles
+      if (friendship || reverseFriendship) {
+        return user;
+      }
+    }
+    
+    // Profile is private and viewer is not a friend
+    return null;
+  },
+});
+
 // Create or update user profile
 export const createOrUpdateUser = mutation({
   args: {

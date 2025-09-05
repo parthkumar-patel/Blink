@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, isPast } from "date-fns";
 import {
   Calendar,
   Clock,
@@ -9,6 +9,8 @@ import {
   Users,
   Star,
   ExternalLink,
+  CheckCircle,
+  Heart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +59,8 @@ interface EventCardProps {
   isFavorited?: boolean;
   showRecommendationScore?: boolean;
   viewMode?: "list" | "grid";
+  onConfirmAttendance?: (eventId: string) => void;
+  hasConfirmedAttendance?: boolean;
 }
 
 export function EventCard({
@@ -67,11 +71,14 @@ export function EventCard({
   isFavorited = false,
   showRecommendationScore = false,
   viewMode = "grid",
+  onConfirmAttendance,
+  hasConfirmedAttendance = false,
 }: EventCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const startDate = new Date(event.startDate);
   const endDate = new Date(event.endDate);
+  const isEventPast = isPast(endDate);
   const isToday =
     format(startDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
   const isTomorrow =
@@ -366,22 +373,56 @@ export function EventCard({
               className={`w-4 h-4 ${isFavorited ? "fill-yellow-400 text-yellow-400" : "text-gray-400"}`}
             />
           </Button>
-          <Button
-            variant={userRSVPStatus === "going" ? "default" : "outline"}
-            size="sm"
-            onClick={() => handleRSVP("going")}
-            className="flex-1"
-          >
-            {userRSVPStatus === "going" ? "Going" : "I'm Going"}
-          </Button>
-          <Button
-            variant={userRSVPStatus === "interested" ? "default" : "outline"}
-            size="sm"
-            onClick={() => handleRSVP("interested")}
-            className="flex-1"
-          >
-            {userRSVPStatus === "interested" ? "Interested" : "Interested"}
-          </Button>
+          
+          {isEventPast ? (
+            // Show attendance confirmation for past events
+            userRSVPStatus && (userRSVPStatus === "going" || userRSVPStatus === "interested") ? (
+              hasConfirmedAttendance ? (
+                <div className="flex-1 flex items-center justify-center gap-2 text-green-600 text-sm font-medium">
+                  <CheckCircle className="w-4 h-4" />
+                  Attendance Confirmed
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onConfirmAttendance?.(event._id)}
+                  className="flex-1 gap-2 border-green-300 text-green-700 hover:bg-green-50"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Confirm Attendance
+                </Button>
+              )
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
+                Event ended
+              </div>
+            )
+          ) : (
+            // Show RSVP buttons for upcoming events
+            <>
+              <Button
+                variant={userRSVPStatus === "going" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleRSVP("going")}
+                className="flex-1 gap-1"
+                disabled={isEventPast}
+              >
+                <Heart className={`w-4 h-4 ${userRSVPStatus === "going" ? "fill-current" : ""}`} />
+                {userRSVPStatus === "going" ? "Going" : "I'm Going"}
+              </Button>
+              <Button
+                variant={userRSVPStatus === "interested" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleRSVP("interested")}
+                className="flex-1 gap-1"
+                disabled={isEventPast}
+              >
+                <Star className={`w-4 h-4 ${userRSVPStatus === "interested" ? "fill-current" : ""}`} />
+                {userRSVPStatus === "interested" ? "Interested" : "Interested"}
+              </Button>
+            </>
+          )}
         </div>
       </CardFooter>
     </Card>

@@ -28,6 +28,7 @@ import {
 import { api } from "../../../../convex/_generated/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { PageHeader } from "@/components/layout/page-header";
+import { GroupRSVPManager } from "@/components/groups/group-rsvp-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -650,6 +651,12 @@ export default function EventDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Group RSVP Manager */}
+            <GroupRSVPManager 
+              eventId={eventId}
+              userRSVPStatus={userRSVPStatus}
+            />
 
             {/* Quick actions */}
             <Card>

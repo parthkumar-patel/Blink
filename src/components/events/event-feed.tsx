@@ -13,6 +13,7 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { EventCard } from "./event-card";
 import { EventFilters } from "../filters/event-filters";
+import { AttendanceConfirmation } from "../attendance/attendance-confirmation";
 import { Button } from "@/components/ui/button";
 
 interface EventFeedProps {
@@ -49,6 +50,7 @@ export function EventFeed({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreEvents, setHasMoreEvents] = useState(true);
   const loadingTriggerRef = useRef<HTMLDivElement>(null);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
 
   // Get user profile for personalized events
   const userProfile = useQuery(api.users.getCurrentUser, user ? {} : "skip");
@@ -84,6 +86,17 @@ export function EventFeed({
           userId: userProfile._id,
           eventIds: events.map((e) => e._id),
         }
+      : "skip"
+  );
+
+  // Get user's attendance confirmations
+  const userAttendanceHistory = useQuery(
+    api.attendance.getUserAttendanceHistory,
+    userProfile?._id 
+      ? { 
+          userId: userProfile._id,
+          limit: 100 // Get a larger set to check against
+        } 
       : "skip"
   );
 
@@ -225,6 +238,18 @@ export function EventFeed({
     return map;
   }, [userRSVPs]);
 
+  // Create attendance confirmation status map
+  const attendanceStatusMap = useMemo(() => {
+    if (!userAttendanceHistory) return {};
+    const map: Record<string, boolean> = {};
+    userAttendanceHistory.forEach((attendance) => {
+      if (attendance.event?._id) {
+        map[attendance.event._id] = true;
+      }
+    });
+    return map;
+  }, [userAttendanceHistory]);
+
   const handleRSVP = async (
     eventId: string,
     status: "going" | "interested"
@@ -300,6 +325,11 @@ export function EventFeed({
     setHasMoreEvents(true);
     setIsLoadingMore(false);
     // The query will automatically refetch
+  };
+
+  // Handle attendance confirmation
+  const handleConfirmAttendance = (eventId: string) => {
+    setShowAttendanceModal(true);
   };
 
   // Infinite scroll with Intersection Observer
@@ -448,6 +478,8 @@ export function EventFeed({
             isFavorited={favoriteStatuses?.[event._id] || false}
             showRecommendationScore={showRecommendationScores}
             viewMode={viewMode}
+            onConfirmAttendance={handleConfirmAttendance}
+            hasConfirmedAttendance={attendanceStatusMap[event._id] || false}
           />
         ))}
       </div>
@@ -505,6 +537,12 @@ export function EventFeed({
           </div>
         </div>
       )}
+
+      {/* Attendance Confirmation Modal */}
+      <AttendanceConfirmation 
+        isOpen={showAttendanceModal}
+        onClose={() => setShowAttendanceModal(false)}
+      />
     </div>
   );
 }

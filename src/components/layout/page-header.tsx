@@ -5,7 +5,7 @@ import { Breadcrumb } from "./breadcrumb";
 
 interface PageHeaderProps {
   title: string;
-  description?: string;
+  description?: string | ReactNode;
   actions?: ReactNode;
   breadcrumbItems?: Array<{ label: string; href?: string }>;
   showBreadcrumb?: boolean;
@@ -26,7 +26,11 @@ export function PageHeader({
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
           {description && (
-            <p className="text-gray-600 mt-2 text-lg">{description}</p>
+            typeof description === 'string' ? (
+              <p className="text-gray-600 mt-2 text-lg">{description}</p>
+            ) : (
+              <div className="text-gray-600 mt-2 text-lg">{description}</div>
+            )
           )}
         </div>
         

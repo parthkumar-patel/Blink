@@ -209,4 +209,131 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_name", ["userId", "name"]),
+
+  attendances: defineTable({
+    userId: v.id("users"),
+    eventId: v.id("events"),
+    confirmedAt: v.number(),
+    confirmationMethod: v.union(
+      v.literal("manual"), // User manually confirmed
+      v.literal("organizer"), // Organizer marked them as attended
+      v.literal("automatic") // System detected attendance (future: QR codes, location, etc.)
+    ),
+    rating: v.optional(v.number()), // 1-5 star rating of the event
+    feedback: v.optional(v.string()), // Optional feedback about the event
+    wouldRecommend: v.optional(v.boolean()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_event", ["eventId"])
+    .index("by_user_event", ["userId", "eventId"])
+    .index("by_confirmed_date", ["confirmedAt"]),
+
+  groupRSVPs: defineTable({
+    name: v.string(), // Group name like "Study buddies" or "CS friends"
+    description: v.optional(v.string()),
+    eventId: v.id("events"),
+    organizerId: v.id("users"), // Who created the group
+    isPublic: v.boolean(), // Whether others can discover and join
+    maxMembers: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_organizer", ["organizerId"])
+    .index("by_public", ["isPublic"])
+    .index("by_event_public", ["eventId", "isPublic"]),
+
+  groupMembers: defineTable({
+    groupId: v.id("groupRSVPs"),
+    userId: v.id("users"),
+    role: v.union(
+      v.literal("organizer"),
+      v.literal("member")
+    ),
+    joinedAt: v.number(),
+    invitedBy: v.optional(v.id("users")),
+    status: v.union(
+      v.literal("pending"), // Invited but not yet accepted
+      v.literal("accepted"), // Active member
+      v.literal("declined"), // Declined invitation
+      v.literal("left") // Left the group
+    ),
+  })
+    .index("by_group", ["groupId"])
+    .index("by_user", ["userId"])
+    .index("by_group_user", ["groupId", "userId"])
+    .index("by_group_status", ["groupId", "status"]),
+
+  friendConnections: defineTable({
+    requesterId: v.id("users"), // Who sent the friend request
+    receiverId: v.id("users"), // Who received it
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("declined"),
+      v.literal("blocked")
+    ),
+    createdAt: v.number(),
+    respondedAt: v.optional(v.number()),
+  })
+    .index("by_requester", ["requesterId"])
+    .index("by_receiver", ["receiverId"])
+    .index("by_status", ["status"])
+    .index("by_requester_receiver", ["requesterId", "receiverId"]),
+
+  // Match suggestions for mutual connection detection
+  matchSuggestions: defineTable({
+    suggestedToUserId: v.id("users"), // User who will see the suggestion
+    suggestedUserId: v.id("users"),   // User being suggested
+    matchScore: v.number(),           // Compatibility score (0-100)
+    reasons: v.array(v.string()),     // Why they match (mutual friends, interests, etc.)
+    status: v.union(
+      v.literal("pending"),           // Not yet seen/acted upon
+      v.literal("viewed"),            // Seen but no action taken
+      v.literal("accepted"),          // User wants to connect
+      v.literal("rejected"),          // User dismissed the match
+      v.literal("connected")          // Successfully became friends
+    ),
+    createdAt: v.number(),
+    viewedAt: v.optional(v.number()),
+    respondedAt: v.optional(v.number()),
+    connectionDetails: v.object({
+      mutualFriends: v.number(),
+      sharedInterests: v.number(),
+      commonEvents: v.number(),
+      universityMatch: v.boolean(),
+      yearMatch: v.boolean(),
+      locationProximity: v.optional(v.number()), // Distance in km
+    }),
+  })
+    .index("by_suggested_to", ["suggestedToUserId"])
+    .index("by_suggested_user", ["suggestedUserId"])
+    .index("by_status", ["status"])
+    .index("by_score", ["matchScore"])
+    .index("by_suggested_to_status", ["suggestedToUserId", "status"])
+    .index("by_created_date", ["createdAt"]),
+
+  // Match interactions history
+  matchInteractions: defineTable({
+    fromUserId: v.id("users"),
+    toUserId: v.id("users"),
+    action: v.union(
+      v.literal("viewed"),
+      v.literal("accepted"),
+      v.literal("rejected"),
+      v.literal("friend_request_sent"),
+      v.literal("connection_established")
+    ),
+    suggestionId: v.optional(v.id("matchSuggestions")),
+    timestamp: v.number(),
+    metadata: v.optional(v.object({
+      reason: v.optional(v.string()),
+      source: v.optional(v.string()), // "match_suggestion", "search", "manual"
+    })),
+  })
+    .index("by_from_user", ["fromUserId"])
+    .index("by_to_user", ["toUserId"])
+    .index("by_action", ["action"])
+    .index("by_suggestion", ["suggestionId"])
+    .index("by_timestamp", ["timestamp"])
+    .index("by_from_to", ["fromUserId", "toUserId"]),
 });
