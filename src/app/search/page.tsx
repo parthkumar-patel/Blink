@@ -4,13 +4,14 @@ import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
-import { Search, X } from "lucide-react";
+import { Search, X, BookmarkPlus, Save } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { AppLayout } from "@/components/layout/app-layout";
 import { PageHeader } from "@/components/layout/page-header";
 import { EventCard } from "@/components/events/event-card";
 import { EventFilters } from "@/components/filters/event-filters";
+import { AutocompleteSearch } from "@/components/search/autocomplete-search";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -149,8 +150,10 @@ function SearchPageContent() {
     userProfile?._id ? { userId: userProfile._id } : "skip"
   );
 
-  // Mutation to update user location
+  // Mutations
   const updateUserLocation = useMutation(api.users.updateUserLocation);
+  const addSearchToHistory = useMutation(api.search.addSearchToHistory);
+  const saveSearch = useMutation(api.search.saveSearch);
 
   const events = debouncedQuery.trim() ? searchResults : allEvents;
 
@@ -313,26 +316,62 @@ function SearchPageContent() {
           showBreadcrumb={false}
         />
 
-        {/* Search Input */}
+        {/* Enhanced Search Input */}
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search events by title, description, organizer..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                autoFocus
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <AutocompleteSearch
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  onSearch={(query) => {
+                    if (query && userProfile?._id) {
+                      addSearchToHistory({
+                        userId: userProfile._id,
+                        query,
+                        resultsCount: filteredEvents?.length || 0,
+                      });
+                    }
+                  }}
+                  placeholder="Search events by title, description, organizer..."
+                  autoFocus
+                />
+              </div>
+              
+              {/* Save Search Button */}
+              {searchQuery && userProfile && (
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    const name = prompt("Enter a name for this saved search:");
+                    if (name) {
+                      try {
+                        await saveSearch({
+                          userId: userProfile._id,
+                          name,
+                          query: searchQuery,
+                          filters: {
+                            categories: selectedCategories.length > 0 ? selectedCategories : undefined,
+                            dateRange: (dateRange.start || dateRange.end) ? {
+                              start: dateRange.start?.getTime(),
+                              end: dateRange.end?.getTime(),
+                            } : undefined,
+                            priceFilter: priceFilter !== "all" ? priceFilter : undefined,
+                            locationFilter: locationFilter !== "all" ? locationFilter : undefined,
+                            distanceFilter: userLocation && distanceFilter !== 25 ? distanceFilter : undefined,
+                          },
+                        });
+                        alert("Search saved successfully!");
+                      } catch (error) {
+                        alert("Failed to save search. Make sure the name is unique.");
+                      }
+                    }
+                  }}
+                  className="flex items-center gap-2"
                 >
-                  <X className="w-5 h-5" />
-                </button>
+                  <BookmarkPlus className="w-4 h-4" />
+                  Save
+                </Button>
               )}
             </div>
           </CardContent>

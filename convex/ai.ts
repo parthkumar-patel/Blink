@@ -10,9 +10,11 @@ export const getEnhancedRecommendations = query({
   args: {
     clerkId: v.string(),
     limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 20;
+    const offset = args.offset || 0;
     const now = Date.now();
 
     // Get user preferences
@@ -66,12 +68,13 @@ export const getEnhancedRecommendations = query({
       };
     });
 
-    // Sort by recommendation score and take top results
-    const topEvents = scoredEvents
-      .sort((a, b) => b.recommendationScore - a.recommendationScore)
-      .slice(0, limit);
+    // Sort by recommendation score and apply pagination
+    const sortedEvents = scoredEvents
+      .sort((a, b) => b.recommendationScore - a.recommendationScore);
+    
+    const paginatedEvents = sortedEvents.slice(offset, offset + limit);
 
-    return topEvents;
+    return paginatedEvents;
   },
 });
 

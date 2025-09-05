@@ -96,6 +96,10 @@ export default defineSchema({
     .searchIndex("search_events", {
       searchField: "title",
       filterFields: ["categories", "startDate", "organizer.type"],
+    })
+    .searchIndex("search_events_full", {
+      searchField: "description",
+      filterFields: ["categories", "startDate", "organizer.type"],
     }),
 
   rsvps: defineTable({
@@ -176,4 +180,33 @@ export default defineSchema({
       searchField: "name",
       filterFields: ["categories", "isActive"],
     }),
+
+  searchHistory: defineTable({
+    userId: v.id("users"),
+    query: v.string(),
+    resultsCount: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_date", ["userId", "createdAt"]),
+
+  savedSearches: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    query: v.string(),
+    filters: v.object({
+      categories: v.optional(v.array(v.string())),
+      dateRange: v.optional(v.object({
+        start: v.optional(v.number()),
+        end: v.optional(v.number()),
+      })),
+      priceFilter: v.optional(v.string()),
+      locationFilter: v.optional(v.string()),
+      distanceFilter: v.optional(v.number()),
+    }),
+    createdAt: v.number(),
+    lastUsed: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_name", ["userId", "name"]),
 });

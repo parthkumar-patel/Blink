@@ -1,42 +1,54 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-// Get all events with optional filtering
+// Get all events with optional filtering and efficient pagination
 export const getAllEvents = query({
   args: {
     limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
     categories: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+    const limit = args.limit || 20;
+    const offset = args.offset || 0;
 
+    // Get more events than needed to account for filtering
+    const extraBuffer = args.categories ? Math.max(50, limit * 3) : limit;
+    
     // Get events starting from now
     const events = await ctx.db
       .query("events")
       .filter((q) => q.gte(q.field("startDate"), now))
       .order("asc")
-      .take(args.limit || 20);
+      .take(offset + extraBuffer);
 
     // Filter by categories in JavaScript if provided
+    let filteredEvents = events;
     if (args.categories && args.categories.length > 0) {
-      return events.filter((event) =>
+      filteredEvents = events.filter((event) =>
         event.categories.some((category) => args.categories!.includes(category))
       );
     }
 
-    return events;
+    // Apply pagination after filtering
+    return filteredEvents.slice(offset, offset + limit);
   },
 });
 
-// Get all events with optional filtering (legacy function)
+// Get all events with optional filtering and pagination (legacy function - enhanced)
 export const getEvents = query({
   args: {
     limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
     categories: v.optional(v.array(v.string())),
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const limit = args.limit || 50;
+    const offset = args.offset || 0;
+    
     // Start with basic query ordered by start date
     let events = await ctx.db
       .query("events")
@@ -58,9 +70,8 @@ export const getEvents = query({
       );
     }
 
-    // Apply limit
-    const limit = args.limit || 50;
-    return events.slice(0, limit);
+    // Apply pagination
+    return events.slice(offset, offset + limit);
   },
 });
 
@@ -73,19 +84,140 @@ export const getEvent = query({
   },
 });
 
-// Search events by title and description
+// Enhanced search events by title and description
 export const searchEvents = query({
   args: {
     query: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const results = await ctx.db
+    const limit = args.limit || 20;
+    
+    // Search in titles first (most relevant)
+    const titleResults = await ctx.db
       .query("events")
       .withSearchIndex("search_events", (q) => q.search("title", args.query))
-      .take(args.limit || 20);
+      .take(limit);
 
-    return results;
+    // Search in descriptions for additional results
+    const descriptionResults = await ctx.db
+      .query("events")
+      .withSearchIndex("search_events_full", (q) => q.search("description", args.query))
+      .take(limit);
+
+    // Combine and deduplicate results
+    const allResults = [...titleResults];
+    const titleIds = new Set(titleResults.map(event => event._id));
+    
+    // Add description results that aren't already in title results
+    for (const event of descriptionResults) {
+      if (!titleIds.has(event._id) && allResults.length < limit) {
+        allResults.push(event);
+      }
+    }
+
+    return allResults.slice(0, limit);
+  },
+});
+
+// Get autocomplete suggestions based on search query
+export const getSearchSuggestions = query({
+  args: {
+    query: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 8;
+    
+    if (args.query.length < 2) {
+      return [];
+    }
+
+    // Get events that match the query
+    const events = await ctx.db
+      .query("events")
+      .withSearchIndex("search_events", (q) => q.search("title", args.query))
+      .take(limit * 2);
+
+    // Extract unique suggestions from event titles and categories
+    const suggestions = new Set<string>();
+    
+    // Add partial matches from event titles
+    events.forEach(event => {
+      const words = event.title.toLowerCase().split(/\s+/);
+      words.forEach(word => {
+        if (word.startsWith(args.query.toLowerCase()) && word.length > args.query.length) {
+          suggestions.add(word);
+        }
+      });
+      
+      // Add category matches
+      event.categories.forEach(category => {
+        if (category.toLowerCase().includes(args.query.toLowerCase())) {
+          suggestions.add(category);
+        }
+      });
+    });
+
+    // Add popular search terms that match
+    const popularTerms = [
+      "hackathon", "workshop", "career fair", "networking", "study group", 
+      "tech talk", "conference", "seminar", "competition", "volunteer",
+      "club meeting", "social event", "academic", "research", "internship",
+      "job fair", "startup", "entrepreneurship", "coding", "design"
+    ];
+    
+    popularTerms.forEach(term => {
+      if (term.toLowerCase().includes(args.query.toLowerCase())) {
+        suggestions.add(term);
+      }
+    });
+
+    return Array.from(suggestions).slice(0, limit);
+  },
+});
+
+// Get popular searches and trending terms
+export const getPopularSearches = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get recent search history to find popular terms
+    const recentSearches = await ctx.db
+      .query("searchHistory")
+      .withIndex("by_user_date")
+      .order("desc")
+      .take(1000);
+
+    // Count frequency of search terms
+    const searchCounts = new Map<string, number>();
+    recentSearches.forEach(search => {
+      if (search.query.trim()) {
+        const normalized = search.query.toLowerCase().trim();
+        searchCounts.set(normalized, (searchCounts.get(normalized) || 0) + 1);
+      }
+    });
+
+    // Sort by frequency and return top terms
+    const sortedSearches = Array.from(searchCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([query, count]) => ({ query, count }));
+
+    // If not enough data, return default popular searches
+    if (sortedSearches.length < 5) {
+      return [
+        { query: "hackathon", count: 45 },
+        { query: "workshop", count: 38 },
+        { query: "career fair", count: 32 },
+        { query: "networking", count: 28 },
+        { query: "study group", count: 24 },
+        { query: "tech talk", count: 22 },
+        { query: "conference", count: 18 },
+        { query: "competition", count: 15 },
+      ];
+    }
+
+    return sortedSearches;
   },
 });
 

@@ -24,6 +24,7 @@ import type * as events from "../events.js";
 import type * as favorites from "../favorites.js";
 import type * as rsvps from "../rsvps.js";
 import type * as sampleData from "../sampleData.js";
+import type * as search from "../search.js";
 import type * as users from "../users.js";
 
 /**
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   favorites: typeof favorites;
   rsvps: typeof rsvps;
   sampleData: typeof sampleData;
+  search: typeof search;
   users: typeof users;
 }>;
 export declare const api: FilterApi<

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
@@ -10,6 +10,7 @@ import {
   filterEventsByDistance,
 } from "@/lib/utils/location";
 import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 import { EventCard } from "./event-card";
 import { EventFilters } from "../filters/event-filters";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,9 @@ export function EventFeed({
     longitude: number;
   } | null>(null);
   const [loadedEvents, setLoadedEvents] = useState<number>(limit);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreEvents, setHasMoreEvents] = useState(true);
+  const loadingTriggerRef = useRef<HTMLDivElement>(null);
 
   // Get user profile for personalized events
   const userProfile = useQuery(api.users.getCurrentUser, user ? {} : "skip");
@@ -101,7 +105,7 @@ export function EventFeed({
       try {
         location = await getMapboxLocation();
         console.log("Using Mapbox high-precision location");
-      } catch (mapboxError) {
+      } catch {
         console.log(
           "Mapbox location failed, falling back to browser geolocation"
         );
@@ -247,7 +251,7 @@ export function EventFeed({
       } else {
         // Create new RSVP
         await createRSVP({
-          eventId: eventId as any,
+          eventId: eventId as Id<"events">,
           status,
         });
       }
@@ -262,21 +266,76 @@ export function EventFeed({
     try {
       await toggleFavorite({
         userId: userProfile._id,
-        eventId: eventId as any,
+        eventId: eventId as Id<"events">,
       });
     } catch (error) {
       console.error("Error toggling favorite:", error);
     }
   };
 
-  const loadMoreEvents = () => {
-    setLoadedEvents((prev) => prev + limit);
-  };
+  const loadMoreEvents = useCallback(async () => {
+    if (isLoadingMore || !hasMoreEvents) return;
+    
+    setIsLoadingMore(true);
+    
+    // Simulate a small delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    setLoadedEvents((prev) => {
+      const newCount = prev + limit;
+      
+      // Check if we've loaded all available events
+      if (filteredEvents && newCount >= filteredEvents.length) {
+        setHasMoreEvents(false);
+      }
+      
+      return newCount;
+    });
+    
+    setIsLoadingMore(false);
+  }, [isLoadingMore, hasMoreEvents, limit, filteredEvents]);
 
   const refreshEvents = () => {
     setLoadedEvents(limit);
+    setHasMoreEvents(true);
+    setIsLoadingMore(false);
     // The query will automatically refetch
   };
+
+  // Infinite scroll with Intersection Observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const target = entries[0];
+        if (target.isIntersecting && hasMoreEvents && !isLoadingMore) {
+          loadMoreEvents();
+        }
+      },
+      {
+        root: null,
+        rootMargin: "100px", // Start loading when user is 100px from bottom
+        threshold: 0.1,
+      }
+    );
+
+    const currentTrigger = loadingTriggerRef.current;
+    if (currentTrigger) {
+      observer.observe(currentTrigger);
+    }
+
+    return () => {
+      if (currentTrigger) {
+        observer.unobserve(currentTrigger);
+      }
+    };
+  }, [loadMoreEvents, hasMoreEvents, isLoadingMore]);
+
+  // Reset infinite scroll state when filters change
+  useEffect(() => {
+    setLoadedEvents(limit);
+    setHasMoreEvents(true);
+    setIsLoadingMore(false);
+  }, [limit, selectedCategories, dateRange, priceFilter, locationFilter, distanceFilter, userLocation]);
 
   if (!events) {
     return (
@@ -379,7 +438,7 @@ export function EventFeed({
             : "grid gap-6 md:grid-cols-2 lg:grid-cols-3"
         }
       >
-        {filteredEvents.map((event) => (
+        {filteredEvents.slice(0, loadedEvents).map((event) => (
           <EventCard
             key={event._id}
             event={event}
@@ -393,12 +452,31 @@ export function EventFeed({
         ))}
       </div>
 
-      {/* Load More */}
-      {filteredEvents.length >= loadedEvents && (
-        <div className="text-center pt-6">
-          <Button variant="outline" onClick={loadMoreEvents} className="px-8">
-            Load More Events
-          </Button>
+      {/* Infinite Scroll Trigger */}
+      {hasMoreEvents && (
+        <div
+          ref={loadingTriggerRef}
+          className="flex items-center justify-center py-8"
+        >
+          {isLoadingMore ? (
+            <div className="flex items-center gap-2 text-gray-600">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Loading more events...</span>
+            </div>
+          ) : (
+            <div className="text-gray-400 text-sm">
+              Scroll down to load more events
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* End of events indicator */}
+      {!hasMoreEvents && filteredEvents.length > 0 && (
+        <div className="text-center py-8">
+          <div className="text-gray-500 text-sm">
+            🎉 You&apos;ve seen all {filteredEvents.length} events!
+          </div>
         </div>
       )}
 

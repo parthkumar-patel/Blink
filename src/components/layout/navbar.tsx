@@ -32,6 +32,7 @@ export function Navbar() {
   const authenticatedNavigation = [
     { name: "Dashboard", href: "/dashboard" },
     { name: "Events", href: "/events" },
+    { name: "Calendar", href: "/calendar" },
     { name: "Clubs", href: "/clubs" },
     { name: "My Events", href: "/my-events" },
     { name: "Discover", href: "/discover" },
