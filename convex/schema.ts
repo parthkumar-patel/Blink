@@ -336,4 +336,110 @@ export default defineSchema({
     .index("by_suggestion", ["suggestionId"])
     .index("by_timestamp", ["timestamp"])
     .index("by_from_to", ["fromUserId", "toUserId"]),
+
+  // Conversations for messaging system
+  conversations: defineTable({
+    participantIds: v.array(v.id("users")), // Users in the conversation
+    type: v.union(
+      v.literal("direct"),    // 1-on-1 conversation
+      v.literal("group")      // Group conversation (future)
+    ),
+    lastMessageId: v.optional(v.id("messages")),
+    lastMessageAt: v.number(),
+    createdAt: v.number(),
+    metadata: v.object({
+      initiatedBy: v.id("users"),
+      initiatedVia: v.optional(v.string()), // "match_accept", "friend_request", "manual"
+      matchId: v.optional(v.id("matchSuggestions")), // If started from a match
+    }),
+    // Privacy and safety
+    isArchived: v.optional(v.boolean()),
+    mutedBy: v.optional(v.array(v.id("users"))), // Users who muted this conversation
+    reportedBy: v.optional(v.array(v.id("users"))), // Users who reported this conversation
+  })
+    .index("by_participants", ["participantIds"])
+    .index("by_last_message", ["lastMessageAt"])
+    .index("by_created", ["createdAt"]),
+
+  // Messages within conversations
+  messages: defineTable({
+    conversationId: v.id("conversations"),
+    senderId: v.id("users"),
+    content: v.object({
+      text: v.string(),
+      type: v.union(
+        v.literal("text"),
+        v.literal("image"),
+        v.literal("file"),
+        v.literal("system") // System messages like "User joined", "User left"
+      ),
+      metadata: v.optional(v.object({
+        fileName: v.optional(v.string()),
+        fileSize: v.optional(v.number()),
+        imageUrl: v.optional(v.string()),
+        systemAction: v.optional(v.string()), // For system messages
+      })),
+    }),
+    sentAt: v.number(),
+    editedAt: v.optional(v.number()),
+    deletedAt: v.optional(v.number()),
+    
+    // Message status
+    readBy: v.array(v.object({
+      userId: v.id("users"),
+      readAt: v.number(),
+    })),
+    
+    // Safety features
+    isEncrypted: v.boolean(),
+    reportedBy: v.optional(v.array(v.id("users"))),
+    moderationFlags: v.optional(v.array(v.string())), // "spam", "inappropriate", etc.
+    
+    // Reply/thread functionality
+    replyToMessageId: v.optional(v.id("messages")),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_sender", ["senderId"])
+    .index("by_sent_at", ["sentAt"])
+    .index("by_conversation_sent", ["conversationId", "sentAt"]),
+
+  // Message reports for safety
+  messageReports: defineTable({
+    messageId: v.id("messages"),
+    reporterId: v.id("users"),
+    reason: v.union(
+      v.literal("spam"),
+      v.literal("harassment"),
+      v.literal("inappropriate_content"),
+      v.literal("fake_profile"),
+      v.literal("other")
+    ),
+    description: v.optional(v.string()),
+    reportedAt: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("reviewed"),
+      v.literal("resolved"),
+      v.literal("dismissed")
+    ),
+    reviewedBy: v.optional(v.id("users")), // Admin who reviewed
+    reviewedAt: v.optional(v.number()),
+    resolution: v.optional(v.string()),
+  })
+    .index("by_message", ["messageId"])
+    .index("by_reporter", ["reporterId"])
+    .index("by_status", ["status"])
+    .index("by_reported_date", ["reportedAt"]),
+
+  // User blocks for safety
+  userBlocks: defineTable({
+    blockerId: v.id("users"),   // User who is blocking
+    blockedId: v.id("users"),   // User who is being blocked
+    reason: v.optional(v.string()),
+    blockedAt: v.number(),
+    expiresAt: v.optional(v.number()), // For temporary blocks
+  })
+    .index("by_blocker", ["blockerId"])
+    .index("by_blocked", ["blockedId"])
+    .index("by_blocker_blocked", ["blockerId", "blockedId"]),
 });

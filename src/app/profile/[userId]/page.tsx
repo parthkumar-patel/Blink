@@ -34,6 +34,7 @@ export default function UserProfilePage() {
   const { user: currentUser } = useUser();
   const userId = params.userId as string;
   const sendFriendRequest = useMutation(api.friends.sendFriendRequest);
+  const createOrGetConversation = useMutation(api.messaging.createOrGetConversation);
 
   // Get the user profile
   const userProfile = useQuery(api.users.getUserById, { 
@@ -83,6 +84,23 @@ export default function UserProfilePage() {
     } catch (error) {
       console.error("Error sending friend request:", error);
       toast.error("Failed to send friend request. Please try again.");
+    }
+  };
+
+  const handleMessage = async () => {
+    if (!currentUserProfile?._id || !userProfile?._id) return;
+    
+    try {
+      const conversationId = await createOrGetConversation({
+        participantIds: [currentUserProfile._id, userProfile._id],
+        initiatedVia: "profile_message",
+      });
+      
+      toast.success("Opening conversation...");
+      router.push("/messages");
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      toast.error("Failed to start conversation. Please try again.");
     }
   };
 
@@ -199,7 +217,11 @@ export default function UserProfilePage() {
                     </Button>
                   )}
                   {friendshipStatus === "friends" && (
-                    <Button variant="outline" className="gap-2 border-green-200 text-green-700 hover:bg-green-50">
+                    <Button 
+                      onClick={handleMessage}
+                      variant="outline" 
+                      className="gap-2 border-green-200 text-green-700 hover:bg-green-50"
+                    >
                       <MessageCircle className="w-4 h-4" />
                       Message
                     </Button>

@@ -466,7 +466,36 @@ export const acceptMatch = mutation({
         },
       });
 
-      return { connectionId, message: "Friend request sent!" };
+      // Create conversation for the matched users
+      const conversationId = await ctx.db.insert("conversations", {
+        participantIds: [user._id, suggestion.suggestedUserId].sort(),
+        type: "direct",
+        lastMessageAt: Date.now(),
+        createdAt: Date.now(),
+        metadata: {
+          initiatedBy: user._id,
+          initiatedVia: "match_accept",
+          matchId: args.suggestionId,
+        },
+      });
+
+      // Send welcome system message
+      await ctx.db.insert("messages", {
+        conversationId,
+        senderId: user._id,
+        content: {
+          text: `${user.name} accepted your match! Start chatting to get to know each other better.`,
+          type: "system",
+          metadata: {
+            systemAction: "match_accepted",
+          },
+        },
+        sentAt: Date.now(),
+        readBy: [],
+        isEncrypted: false,
+      });
+
+      return { connectionId, conversationId, message: "Match accepted! Friend request sent and conversation started." };
     }
 
     return { message: "Match accepted!" };

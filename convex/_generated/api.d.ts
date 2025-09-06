@@ -26,6 +26,7 @@ import type * as favorites from "../favorites.js";
 import type * as friends from "../friends.js";
 import type * as groupRSVP from "../groupRSVP.js";
 import type * as matches from "../matches.js";
+import type * as messaging from "../messaging.js";
 import type * as rsvps from "../rsvps.js";
 import type * as sampleData from "../sampleData.js";
 import type * as search from "../search.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   friends: typeof friends;
   groupRSVP: typeof groupRSVP;
   matches: typeof matches;
+  messaging: typeof messaging;
   rsvps: typeof rsvps;
   sampleData: typeof sampleData;
   search: typeof search;

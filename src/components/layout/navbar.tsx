@@ -10,10 +10,20 @@ import {
   Search,
   Plus,
   ChevronDown,
+  Home,
+  Compass,
+  Users,
+  Activity,
+  MessageCircle,
+  Heart,
+  Star,
+  Settings as SettingsIcon,
+  User as UserIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MatchNotificationBadge } from "@/components/matches/match-notification-badge";
+import { MessageNotificationBadge } from "@/components/messages/message-notification-badge";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -22,35 +32,70 @@ export function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   const publicNavigation = [
-    { name: "Events", href: "/events" },
-    { name: "Clubs", href: "/clubs" },
-    { name: "About", href: "/about" },
-    { name: "Contact", href: "/contact" },
+    { name: "Events", href: "/events", icon: Calendar },
+    { name: "Clubs", href: "/clubs", icon: Users },
+    { name: "About", href: "/about", icon: null },
+    { name: "Contact", href: "/contact", icon: null },
   ];
 
-  const authenticatedNavigation = [
+  // New organized navigation structure
+  const mainNavigation = [
+    {
+      name: "Home",
+      href: "/dashboard",
+      icon: Home,
+      single: true,
+    },
+    {
+      name: "Discover",
+      icon: Compass,
+      items: [
+        { name: "Events", href: "/events", icon: Calendar, description: "Browse upcoming events" },
+        { name: "Calendar", href: "/calendar", icon: Calendar, description: "View events calendar" },
+        { name: "Clubs", href: "/clubs", icon: Users, description: "Explore student clubs" },
+      ],
+    },
+    {
+      name: "Social",
+      icon: Users,
+      items: [
+        { name: "Matches", href: "/matches", icon: Heart, description: "Find study buddies", badge: "MatchNotificationBadge" },
+        { name: "Friends", href: "/friends", icon: Users, description: "Your connections" },
+        { name: "Messages", href: "/messages", icon: MessageCircle, description: "Chat with friends", badge: "MessageNotificationBadge" },
+      ],
+    },
+    {
+      name: "My Activity",
+      icon: Activity,
+      items: [
+        { name: "My Events", href: "/my-events", icon: Star, description: "Events you're attending" },
+        { name: "Favorites", href: "/favorites", icon: Heart, description: "Saved events" },
+      ],
+    },
+  ];
+
+  const userMenuItems = [
+    { name: "Profile", href: "/profile", icon: UserIcon },
+    { name: "Settings", href: "/settings", icon: SettingsIcon },
+    { name: "Notifications", href: "/notifications", icon: Bell },
+    { name: "Admin Tools", href: "/admin", icon: SettingsIcon },
+  ];
+
+  // Simple navigation for now - we can improve this later
+  const simpleAuthenticatedNavigation = [
     { name: "Dashboard", href: "/dashboard" },
     { name: "Events", href: "/events" },
     { name: "Calendar", href: "/calendar" },
     { name: "Clubs", href: "/clubs" },
     { name: "Matches", href: "/matches" },
     { name: "Friends", href: "/friends" },
-    { name: "My Events", href: "/my-events" },
-    { name: "Discover", href: "/discover" },
+    { name: "Messages", href: "/messages" },
   ];
 
-  const userMenuItems = [
-    { name: "Profile", href: "/profile" },
-    { name: "Settings", href: "/settings" },
-    { name: "My RSVPs", href: "/my-events" },
-    { name: "Manage Events", href: "/my-events/manage" },
-    { name: "Notifications", href: "/notifications" },
-    { name: "Admin Tools", href: "/admin" },
-  ];
-
-  const navigation = isSignedIn ? authenticatedNavigation : publicNavigation;
+  const navigation = isSignedIn ? simpleAuthenticatedNavigation : publicNavigation;
 
   const isActivePath = (href: string) => {
     return pathname === href || pathname.startsWith(href + "/");
@@ -90,6 +135,7 @@ export function Navbar() {
                 <span className="flex items-center">
                   {item.name}
                   {item.name === "Matches" && isSignedIn && <MatchNotificationBadge />}
+                  {item.name === "Messages" && isSignedIn && <MessageNotificationBadge />}
                 </span>
               </Link>
             ))}
@@ -217,6 +263,7 @@ export function Navbar() {
                   <span className="flex items-center">
                     {item.name}
                     {item.name === "Matches" && isSignedIn && <MatchNotificationBadge />}
+                    {item.name === "Messages" && isSignedIn && <MessageNotificationBadge />}
                   </span>
                 </Link>
               ))}
