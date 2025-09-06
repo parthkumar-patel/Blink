@@ -29,6 +29,9 @@ import {
   ArchiveRestore,
   UserX,
   Inbox,
+  X,
+  GripVertical,
+  Image as ImageIcon,
 } from "lucide-react";
 
 // Dynamically import emoji picker to avoid SSR issues
@@ -114,6 +117,14 @@ export default function MessagesPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [showArchivedChats, setShowArchivedChats] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<Array<{
+    id: string;
+    file: File;
+    preview: string;
+    name: string;
+    size: number;
+  }>>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Queries
@@ -210,29 +221,101 @@ export default function MessagesPage() {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !selectedConversationId) return;
+    const files = event.target.files;
+    if (!files || !selectedConversationId) return;
+
+    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      // Handle image files - add to preview
+      const newImages = imageFiles.map(file => ({
+        id: Math.random().toString(36).substr(2, 9),
+        file,
+        preview: URL.createObjectURL(file),
+        name: file.name,
+        size: file.size,
+      }));
+      
+      setSelectedImages(prev => [...prev, ...newImages]);
+    } else {
+      // Handle non-image files - send immediately
+      const file = files[0];
+      setUploadingFile(true);
+      try {
+        const fileUrl = URL.createObjectURL(file);
+        const messageType = 'file';
+        
+        await sendMessage({
+          conversationId: selectedConversationId,
+          text: file.name,
+          fileUrl: fileUrl,
+          fileName: file.name,
+          fileSize: file.size,
+          messageType: messageType as any,
+        });
+        
+        toast.success('File sent!');
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        toast.error("Failed to send file. Please try again.");
+      } finally {
+        setUploadingFile(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    }
+  };
+
+  const removeImage = (imageId: string) => {
+    setSelectedImages(prev => {
+      const updated = prev.filter(img => img.id !== imageId);
+      // Clean up object URL
+      const imageToRemove = prev.find(img => img.id === imageId);
+      if (imageToRemove) {
+        URL.revokeObjectURL(imageToRemove.preview);
+      }
+      return updated;
+    });
+  };
+
+  const reorderImages = (startIndex: number, endIndex: number) => {
+    setSelectedImages(prev => {
+      const result = Array.from(prev);
+      const [removed] = result.splice(startIndex, 1);
+      result.splice(endIndex, 0, removed);
+      return result;
+    });
+  };
+
+  const sendSelectedImages = async () => {
+    if (!selectedConversationId || selectedImages.length === 0) return;
 
     setUploadingFile(true);
     try {
-      // Create a simple file URL (in production, upload to a file storage service)
-      const fileUrl = URL.createObjectURL(file);
-      const messageType = file.type.startsWith('image/') ? 'image' : 'file';
+      // Send images in order
+      for (const image of selectedImages) {
+        const fileUrl = URL.createObjectURL(image.file);
+        
+        await sendMessage({
+          conversationId: selectedConversationId,
+          text: image.name,
+          fileUrl: fileUrl,
+          fileName: image.name,
+          fileSize: image.size,
+          messageType: 'image' as any,
+        });
+      }
       
-      await sendMessage({
-        conversationId: selectedConversationId,
-        text: file.name,
-        fileUrl: fileUrl,
-        fileName: file.name,
-        fileSize: file.size,
-        messageType: messageType as any,
-      });
+      toast.success(`${selectedImages.length} image${selectedImages.length > 1 ? 's' : ''} sent!`);
       
-      toast.success(`${messageType === 'image' ? 'Image' : 'File'} sent!`);
-      setShowFileUpload(false);
+      // Clean up
+      selectedImages.forEach(img => URL.revokeObjectURL(img.preview));
+      setSelectedImages([]);
+      setMessageText('');
     } catch (error) {
-      console.error("Error uploading file:", error);
-      toast.error("Failed to send file. Please try again.");
+      console.error("Error sending images:", error);
+      toast.error("Failed to send images. Please try again.");
     } finally {
       setUploadingFile(false);
       if (fileInputRef.current) {
@@ -719,6 +802,109 @@ export default function MessagesPage() {
                   </div>
                 </ScrollArea>
 
+                {/* Image Preview */}
+                {selectedImages.length > 0 && (
+                  <div className="p-4 border-t border-gray-200 bg-gray-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-gray-700">
+                        {selectedImages.length} image{selectedImages.length > 1 ? 's' : ''} selected
+                      </h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          selectedImages.forEach(img => URL.revokeObjectURL(img.preview));
+                          setSelectedImages([]);
+                        }}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-3">
+                      {selectedImages.map((image, index) => (
+                        <div
+                          key={image.id}
+                          className="relative group bg-white rounded-lg border border-gray-200 overflow-hidden"
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', index.toString());
+                            setIsDragging(true);
+                          }}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const dragIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                            if (dragIndex !== index) {
+                              reorderImages(dragIndex, index);
+                            }
+                            setIsDragging(false);
+                          }}
+                          onDragEnd={() => setIsDragging(false)}
+                        >
+                          <div className="aspect-square relative">
+                            <img
+                              src={image.preview}
+                              alt={image.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
+                              <div className="opacity-0 group-hover:opacity-100 flex gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="bg-white/90 hover:bg-white text-gray-700"
+                                  onClick={() => removeImage(image.id)}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                                <div className="bg-white/90 rounded p-1">
+                                  <GripVertical className="w-3 h-3 text-gray-500" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-2">
+                            <p className="text-xs text-gray-600 truncate" title={image.name}>
+                              {image.name}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {(image.size / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-500">
+                        Drag to reorder • Click X to remove
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            selectedImages.forEach(img => URL.revokeObjectURL(img.preview));
+                            setSelectedImages([]);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={sendSelectedImages}
+                          disabled={uploadingFile}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          {uploadingFile ? "Sending..." : `Send ${selectedImages.length} image${selectedImages.length > 1 ? 's' : ''}`}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Message Input */}
                 <div className="p-4 border-t border-gray-200 bg-white">
                   <div className="flex items-end gap-2 relative">
@@ -730,6 +916,7 @@ export default function MessagesPage() {
                         onChange={handleFileUpload}
                         className="hidden"
                         accept="image/*,.pdf,.doc,.docx,.txt"
+                        multiple
                       />
                       <Button 
                         variant="outline" 
@@ -749,7 +936,11 @@ export default function MessagesPage() {
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();
-                            handleSendMessage();
+                            if (selectedImages.length > 0) {
+                              sendSelectedImages();
+                            } else {
+                              handleSendMessage();
+                            }
                           }
                         }}
                         className="resize-none"
@@ -779,8 +970,14 @@ export default function MessagesPage() {
                     </div>
                     
                     <Button 
-                      onClick={handleSendMessage}
-                      disabled={!messageText.trim() || uploadingFile}
+                      onClick={() => {
+                        if (selectedImages.length > 0) {
+                          sendSelectedImages();
+                        } else {
+                          handleSendMessage();
+                        }
+                      }}
+                      disabled={(!messageText.trim() && selectedImages.length === 0) || uploadingFile}
                       className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       {uploadingFile ? (
