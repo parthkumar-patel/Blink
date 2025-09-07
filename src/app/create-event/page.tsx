@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
-import { Calendar, Clock, MapPin, Users, DollarSign, Tag, Image, Link as LinkIcon, Save, X } from "lucide-react";
+import NextImage from "next/image";
+import { Calendar, MapPin, DollarSign, Tag, Image as ImageIcon, Save, X } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { AppLayout } from "@/components/layout/app-layout";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,8 @@ export default function CreateEventPage() {
 
   // Create event mutation
   const createEvent = useMutation(api.events.createEvent);
+  // Upload URL for Convex Storage (event images)
+  const generateUploadUrl = useMutation(api.events.generateUploadUrl);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -52,15 +56,15 @@ export default function CreateEventPage() {
   });
 
   const [currentTag, setCurrentTag] = useState('');
-  const [currentSocialUrl, setCurrentSocialUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<Array<{ id: string; file: File; preview: string; name: string; size: number }>>([]);
 
   const availableCategories = [
     'tech', 'music', 'sports', 'volunteering', 'career', 'academic', 
     'social', 'cultural', 'food', 'arts', 'networking', 'workshop'
   ];
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: unknown) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -88,15 +92,41 @@ export default function CreateEventPage() {
     handleInputChange('tags', formData.tags.filter(t => t !== tag));
   };
 
-  const addSocialUrl = () => {
-    if (currentSocialUrl.trim() && !formData.socialUrls.includes(currentSocialUrl.trim())) {
-      handleInputChange('socialUrls', [...formData.socialUrls, currentSocialUrl.trim()]);
-      setCurrentSocialUrl('');
-    }
+  const onImageFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (!files.length) return;
+    const imgs = files
+      .filter((f) => f.type.startsWith('image/'))
+      .map((file) => ({
+        id: Math.random().toString(36).slice(2),
+        file,
+        preview: URL.createObjectURL(file),
+        name: file.name,
+        size: file.size,
+      }));
+    if (imgs.length) setSelectedImages((prev) => [...prev, ...imgs]);
+    // reset input value to allow same file selection again
+    e.currentTarget.value = '';
   };
 
-  const removeSocialUrl = (url: string) => {
-    handleInputChange('socialUrls', formData.socialUrls.filter(u => u !== url));
+  const removeSelectedImage = (id: string) => {
+    setSelectedImages((prev) => {
+      const img = prev.find((i) => i.id === id);
+      if (img) URL.revokeObjectURL(img.preview);
+      return prev.filter((i) => i.id !== id);
+    });
+  };
+
+  const uploadToConvex = async (file: File): Promise<Id<"_storage">> => {
+    const uploadUrl = await generateUploadUrl();
+    const res = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
+    if (!res.ok) throw new Error('Upload failed');
+    const json = await res.json();
+    return ((json.storageId ?? json) as string) as Id<"_storage">;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -120,6 +150,16 @@ export default function CreateEventPage() {
       const endDateTime = formData.endDate && formData.endTime 
         ? new Date(`${formData.endDate}T${formData.endTime}`)
         : new Date(startDateTime.getTime() + 2 * 60 * 60 * 1000); // Default 2 hours
+
+      // Upload selected images first to get storage IDs
+      let imageStorageIds: Id<"_storage">[] | undefined = undefined;
+      if (selectedImages.length > 0) {
+        imageStorageIds = [];
+        for (const img of selectedImages) {
+          const sid = await uploadToConvex(img.file);
+          imageStorageIds.push(sid);
+        }
+      }
 
       // Prepare event data
       const eventData = {
@@ -148,7 +188,8 @@ export default function CreateEventPage() {
           currency: formData.currency,
           isFree: formData.isFree
         },
-        images: formData.images,
+        images: [],
+        imageStorageIds,
         externalLinks: {
           registration: formData.registrationUrl.trim() || undefined,
           website: formData.websiteUrl.trim() || undefined,
@@ -163,7 +204,10 @@ export default function CreateEventPage() {
 
       const eventId = await createEvent(eventData);
       
-      alert('Event created successfully!');
+      alert('Event submitted! It will be visible once approved.');
+      // Clean previews
+      selectedImages.forEach((i) => URL.revokeObjectURL(i.preview));
+      setSelectedImages([]);
       router.push(`/events/${eventId}`);
     } catch (error) {
       console.error('Error creating event:', error);
@@ -445,6 +489,58 @@ export default function CreateEventPage() {
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Images */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon aria-hidden="true" className="w-5 h-5" />
+                Images
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Upload Images (optional)
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={onImageFilesSelected}
+                  className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                <p className="text-xs text-gray-500 mt-1">JPG, PNG, GIF. Up to 5MB each.</p>
+              </div>
+
+              {selectedImages.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {selectedImages.map((img) => (
+                    <div key={img.id} className="relative group">
+                      <div className="relative w-full h-32">
+                        <NextImage
+                          src={img.preview}
+                          alt={img.name}
+                          fill
+                          sizes="(max-width: 640px) 50vw, 33vw"
+                          className="object-cover rounded-md border"
+                          unoptimized
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeSelectedImage(img.id)}
+                        className="absolute top-1 right-1 bg-white/90 hover:bg-white text-gray-700 rounded-full p-1 shadow"
+                        aria-label="Remove"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 

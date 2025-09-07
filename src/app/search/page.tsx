@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
-import { Search, X, BookmarkPlus, Save } from "lucide-react";
+import { Search, BookmarkPlus } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -36,7 +36,7 @@ function SearchPageContent() {
   const [locationFilter, setLocationFilter] = useState<
     "all" | "virtual" | "in-person"
   >("all");
-  const [distanceFilter, setDistanceFilter] = useState<number>(1); // Default 1km for campus
+  const [distanceFilter, setDistanceFilter] = useState<number>(25); // Default 25km to avoid over-filtering
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -74,7 +74,7 @@ function SearchPageContent() {
       try {
         location = await getMapboxLocation();
         console.log("Using Mapbox high-precision location");
-      } catch (mapboxError) {
+      } catch {
         console.log(
           "Mapbox location failed, falling back to browser geolocation"
         );
@@ -218,8 +218,8 @@ function SearchPageContent() {
       return true;
     });
 
-    // Apply distance filter if user location is available
-    if (userLocation && distanceFilter) {
+    // Apply distance filter only if user has a location and distance differs from default
+    if (userLocation && distanceFilter !== 25) {
       filtered = filterEventsByDistance(filtered, userLocation, distanceFilter);
     }
 
@@ -362,7 +362,7 @@ function SearchPageContent() {
                           },
                         });
                         alert("Search saved successfully!");
-                      } catch (error) {
+                      } catch {
                         alert("Failed to save search. Make sure the name is unique.");
                       }
                     }

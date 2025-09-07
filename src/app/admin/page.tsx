@@ -164,7 +164,7 @@ export default function AdminPage() {
                     <div className="flex-1">
                       <h4 className="font-semibold text-red-900 mb-2">Cleanup Test Users</h4>
                       <p className="text-sm text-red-700 mb-4">
-                        Removes all test users created by the "Create Test Users" function. 
+                        Removes all test users created by the &quot;Create Test Users&quot; function. 
                         This will not affect real users.
                       </p>
                       <Badge variant="outline" className="text-red-600 border-red-300">
@@ -213,7 +213,7 @@ export default function AdminPage() {
                     <div>
                       <h4 className="font-medium text-gray-900">Create Test Users</h4>
                       <p className="text-sm text-gray-600">
-                        Click "Create Test Users" to add sample users with varied profiles
+                        Click &quot;Create Test Users&quot; to add sample users with varied profiles
                       </p>
                     </div>
                   </div>
@@ -225,7 +225,7 @@ export default function AdminPage() {
                     <div>
                       <h4 className="font-medium text-gray-900">Test Matching</h4>
                       <p className="text-sm text-gray-600">
-                        Go to /matches and click "Generate Matches" to see the algorithm in action
+                        Go to /matches and click &quot;Generate Matches&quot; to see the algorithm in action
                       </p>
                     </div>
                   </div>
@@ -249,7 +249,7 @@ export default function AdminPage() {
                     <div>
                       <h4 className="font-medium text-gray-900">Clean Up</h4>
                       <p className="text-sm text-gray-600">
-                        When done testing, click "Cleanup Test Users" to remove test data
+                        When done testing, click &quot;Cleanup Test Users&quot; to remove test data
                       </p>
                     </div>
                   </div>
@@ -266,6 +266,14 @@ export default function AdminPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => window.location.href = '/admin/moderation'}
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  Open Moderation Queue
+                </Button>
                 <Button 
                   variant="outline" 
                   className="w-full justify-start"

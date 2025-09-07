@@ -77,6 +77,8 @@ export default defineSchema({
       isFree: v.boolean(),
     }),
     images: v.array(v.string()),
+    // New: store Convex storage IDs for uploaded images
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
     externalLinks: v.object({
       registration: v.optional(v.string()),
       website: v.optional(v.string()),
@@ -89,10 +91,26 @@ export default defineSchema({
     }),
     rsvpCount: v.number(),
     attendanceCount: v.optional(v.number()),
+    // Submission workflow metadata (optional to preserve existing data)
+    status: v.optional(
+      v.union(
+        v.literal("draft"),
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("rejected")
+      )
+    ),
+    submittedBy: v.optional(v.id("users")),
+    reviewerId: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    rejectionReason: v.optional(v.string()),
+    createdAt: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_start_date", ["startDate"])
     .index("by_categories", ["categories"])
     .index("by_location", ["location.latitude", "location.longitude"])
+    .index("by_status", ["status"]) // for moderation queues
     .searchIndex("search_events", {
       searchField: "title",
       filterFields: ["categories", "startDate", "organizer.type"],

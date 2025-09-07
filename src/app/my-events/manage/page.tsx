@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
+import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { AppLayout } from "@/components/layout/app-layout";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ import Link from "next/link";
 
 export default function ManageEventsPage() {
   const { user } = useUser();
-  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [deletingEventId, setDeletingEventId] = useState<Id<"events"> | null>(null);
 
   // Get events created by this organizer
   const organizerEvents = useQuery(
@@ -36,7 +37,7 @@ export default function ManageEventsPage() {
 
   const deleteEvent = useMutation(api.events.deleteEvent);
 
-  const handleDeleteEvent = async (eventId: string) => {
+  const handleDeleteEvent = async (eventId: Id<"events">) => {
     if (!user?.id) return;
 
     const confirmed = window.confirm(
@@ -48,19 +49,20 @@ export default function ManageEventsPage() {
     setDeletingEventId(eventId);
     try {
       await deleteEvent({
-        eventId: eventId as any,
+        eventId,
         clerkId: user.id,
       });
       toast.success("Event deleted successfully");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to delete event:", error);
-      toast.error(error.message || "Failed to delete event");
+      const msg = error instanceof Error ? error.message : "Failed to delete event";
+      toast.error(msg);
     } finally {
       setDeletingEventId(null);
     }
   };
 
-  const getStatusBadge = (event: any) => {
+  const getStatusBadge = (event: Doc<"events">) => {
     const now = Date.now();
     if (event.endDate < now) {
       return <Badge variant="secondary">Completed</Badge>;
@@ -89,12 +91,17 @@ export default function ManageEventsPage() {
             title="Manage Events"
             description="View and manage events you've created"
           />
-          <Link href="/create-event">
-            <Button className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              Create New Event
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/my-events/submissions">
+              <Button variant="outline">My Submissions</Button>
+            </Link>
+            <Link href="/create-event">
+              <Button className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Create New Event
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {organizerEvents === undefined ? (
