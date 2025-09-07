@@ -5,7 +5,6 @@ import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import {
   User,
-  MapPin,
   Calendar,
   GraduationCap,
   Star,
@@ -15,7 +14,6 @@ import {
   Activity,
   MessageCircle,
   UserPlus,
-  UserMinus,
   Shield,
   Clock,
   ArrowLeft
@@ -57,12 +55,10 @@ export default function UserProfilePage() {
 
   // Get mutual friends if not viewing own profile
   const mutualFriends = useQuery(
-    currentUserProfile && userProfile && currentUserProfile._id !== userProfile._id
-      ? api.friends.getMutualFriends
-      : "skip",
+    api.friends.getMutualFriends,
     currentUserProfile && userProfile && currentUserProfile._id !== userProfile._id
       ? { otherUserId: userId as Id<"users"> }
-      : undefined
+      : "skip"
   );
 
   // Get friendship status
@@ -91,7 +87,7 @@ export default function UserProfilePage() {
     if (!currentUserProfile?._id || !userProfile?._id) return;
     
     try {
-      const conversationId = await createOrGetConversation({
+      await createOrGetConversation({
         participantIds: [currentUserProfile._id, userProfile._id],
         initiatedVia: "profile_message",
       });
@@ -126,7 +122,7 @@ export default function UserProfilePage() {
                 User not found
               </h3>
               <p className="text-gray-600 max-w-md mx-auto">
-                This user profile doesn't exist or is private. They may have restricted their profile visibility in their privacy settings.
+                This user profile doesn&apos;t exist or is private. They may have restricted their profile visibility in their privacy settings.
               </p>
             </div>
           </div>
@@ -334,7 +330,6 @@ export default function UserProfilePage() {
                         </div>
                         <div>
                           <span className="text-sm font-medium text-gray-900">{friend.name}</span>
-                          <p className="text-xs text-gray-500">{friend.university}</p>
                         </div>
                       </div>
                     ))}

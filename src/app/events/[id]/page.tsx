@@ -3,28 +3,25 @@
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { useParams } from "next/navigation";
-import { format, formatDistanceToNow, addDays, isPast, isToday, isTomorrow } from "date-fns";
+import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 import { 
   Calendar, 
   Clock, 
   MapPin, 
   Users, 
   ExternalLink, 
-  ArrowLeft,
   Share2,
-  Bookmark,
   Download,
   Bell,
   Star,
-  Flag,
   Copy,
   MessageSquare,
-  Heart,
   Eye,
-  Navigation,
   Globe,
-  Tag
+  Tag,
+  Heart
 } from "lucide-react";
+import Image from "next/image";
 import { api } from "../../../../convex/_generated/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { PageHeader } from "@/components/layout/page-header";
@@ -32,15 +29,16 @@ import { GroupRSVPManager } from "@/components/groups/group-rsvp-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import Link from "next/link";
 
 export default function EventDetailPage() {
   const params = useParams();
   const { user } = useUser();
-  const eventId = params.id as string;
+  const eventId = params.id as Id<"events">;
 
   // Get event details
-  const event = useQuery(api.events.getEventById, { eventId: eventId as any });
+  const event = useQuery(api.events.getEventById, { eventId });
   
   // Get user profile
   const userProfile = useQuery(
@@ -79,7 +77,7 @@ export default function EventDetailPage() {
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Event not found</h2>
-              <p className="text-gray-600 mb-4">The event you're looking for doesn't exist.</p>
+              <p className="text-gray-600 mb-4">The event you&apos;re looking for doesn&apos;t exist.</p>
               <Link href="/dashboard">
                 <Button>Back to Dashboard</Button>
               </Link>
@@ -124,7 +122,7 @@ export default function EventDetailPage() {
       } else {
         // Create new RSVP
         await createRSVP({
-          eventId: eventId as any,
+          eventId,
           status
         });
       }
@@ -417,10 +415,12 @@ export default function EventDetailPage() {
             <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
               {event.images && event.images.length > 0 && (
                 <div className="h-64 overflow-hidden relative">
-                  <img
+                  <Image
                     src={event.images[0]}
                     alt={event.title}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 400px"
                   />
                   <div className="absolute top-4 right-4 flex gap-2">
                     {event.price.isFree && (
@@ -655,7 +655,7 @@ export default function EventDetailPage() {
             {/* Group RSVP Manager */}
             <GroupRSVPManager 
               eventId={eventId}
-              userRSVPStatus={userRSVPStatus}
+              userRSVPStatus={userRSVPStatus === 'not_going' ? null : (userRSVPStatus || null)}
             />
 
             {/* Quick actions */}

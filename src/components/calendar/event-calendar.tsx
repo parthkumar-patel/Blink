@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
+// @ts-expect-error - react-big-calendar has no types in this project; shim provided in src/types
 import { Calendar, momentLocalizer, Views, View } from "react-big-calendar";
 import moment from "moment";
 import { DndProvider } from "react-dnd";
@@ -8,7 +9,6 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { 
   Calendar as CalendarIcon, 
   Download, 
@@ -31,7 +31,7 @@ interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
-  resource: any; // The full event object from Convex
+  resource: unknown; // The full event object from Convex
   allDay?: boolean;
 }
 
@@ -39,7 +39,7 @@ interface EventCalendarProps {
   height?: number;
   showToolbar?: boolean;
   defaultView?: View;
-  onEventClick?: (event: any) => void;
+  onEventClick?: (event: unknown) => void;
   onDateClick?: (date: Date) => void;
   onEventCreate?: (event: { start: Date; end: Date; title: string }) => void;
 }
@@ -73,8 +73,8 @@ export function EventCalendar({
   );
 
   // Mutations for RSVP and event updates
-  const createRSVP = useMutation(api.rsvps.createRSVP);
-  const updateRSVP = useMutation(api.rsvps.updateRSVP);
+  // const createRSVP = useMutation(api.rsvps.createRSVP);
+  // const updateRSVP = useMutation(api.rsvps.updateRSVP);
   const updateEvent = useMutation(api.events.updateEvent);
 
   // Convert events to calendar format
@@ -109,7 +109,7 @@ export function EventCalendar({
   }, [onEventClick]);
 
   // Handle date selection
-  const handleDateSelect = useCallback((slotInfo: any) => {
+  const handleDateSelect = useCallback((slotInfo: { start: Date; end: Date }) => {
     const { start, end } = slotInfo;
     onDateClick?.(start);
     
@@ -123,7 +123,7 @@ export function EventCalendar({
   }, [onDateClick, onEventCreate]);
 
   // Handle event drag and drop
-  const handleEventDrop = useCallback(async (info: any) => {
+  const handleEventDrop = useCallback(async (info: { event: { id: string }, start: Date, end: Date }) => {
     const { event, start, end } = info;
     
     if (!userProfile?.clerkId) {
@@ -145,7 +145,7 @@ export function EventCalendar({
   }, [updateEvent, userProfile]);
 
   // Handle event resize
-  const handleEventResize = useCallback(async (info: any) => {
+  const handleEventResize = useCallback(async (info: { event: { id: string }, start: Date, end: Date }) => {
     const { event, start, end } = info;
     
     if (!userProfile?.clerkId) {
@@ -195,7 +195,7 @@ export function EventCalendar({
   }, [rsvpStatusMap]);
 
   // Custom toolbar component
-  const CustomToolbar = ({ date, view, views, onView, onNavigate }: any) => (
+  const CustomToolbar = ({ date, view, onView, onNavigate }: { date: Date, view: View, onView: (v: View) => void, onNavigate: (action: 'PREV' | 'TODAY' | 'NEXT') => void }) => (
     <div className="flex items-center justify-between mb-4 p-4 bg-white border rounded-lg shadow-sm">
       {/* Navigation */}
       <div className="flex items-center gap-2">
@@ -367,14 +367,22 @@ export function EventCalendar({
               time: "Time",
               event: "Event",
               noEventsInRange: "No events in this range",
-              showMore: (total) => `+${total} more`,
+              showMore: (total: number) => `+${total} more`,
             }}
             formats={{
               timeGutterFormat: 'HH:mm',
-              eventTimeRangeFormat: ({ start, end }, culture, localizer) =>
+              eventTimeRangeFormat: (
+                { start, end }: { start: Date; end: Date },
+                culture: unknown,
+                localizer: { format: (d: Date, f: string, c?: unknown) => string }
+              ) =>
                 localizer?.format(start, 'HH:mm', culture) + ' – ' + localizer?.format(end, 'HH:mm', culture),
               agendaTimeFormat: 'HH:mm',
-              agendaTimeRangeFormat: ({ start, end }, culture, localizer) =>
+              agendaTimeRangeFormat: (
+                { start, end }: { start: Date; end: Date },
+                culture: unknown,
+                localizer: { format: (d: Date, f: string, c?: unknown) => string }
+              ) =>
                 localizer?.format(start, 'HH:mm', culture) + ' – ' + localizer?.format(end, 'HH:mm', culture),
             }}
           />
@@ -385,10 +393,10 @@ export function EventCalendar({
 }
 
 // Helper function to generate iCal content
-function generateICalContent(events: any[], userRSVPs: any[]): string {
+function generateICalContent(events: Array<{ _id: string; title: string; description: string; startDate: number; endDate: number; location: { address: string }; organizer: { name: string }; source: { url: string } }>, userRSVPs: Array<{ eventId: string }>): string {
   const rsvpEventIds = new Set(userRSVPs.map(rsvp => rsvp.eventId));
   
-  let ical = [
+  const ical = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//Student Events Finder//EN',

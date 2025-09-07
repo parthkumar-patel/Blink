@@ -113,7 +113,7 @@ export default function ContactPage() {
                     <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-green-600 mb-2">Message Sent!</h3>
                     <p className="text-gray-600">
-                      Thank you for contacting us. We'll get back to you within 24 hours.
+                      Thank you for contacting us. We&apos;ll get back to you within 24 hours.
                     </p>
                   </div>
                 ) : (

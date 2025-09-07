@@ -35,6 +35,22 @@ export default defineSchema({
       }),
       buddyMatchingEnabled: v.boolean(),
     }),
+    // Organizer verification workflow
+    organizerVerification: v.optional(
+      v.object({
+        status: v.union(
+          v.literal("unverified"),
+          v.literal("pending"),
+          v.literal("verified"),
+          v.literal("rejected")
+        ),
+        organizationName: v.optional(v.string()),
+        requestedAt: v.optional(v.number()),
+        reviewedAt: v.optional(v.number()),
+        reviewerId: v.optional(v.id("users")),
+        notes: v.optional(v.string()),
+      })
+    ),
     lastActiveAt: v.number(),
   })
     .index("by_clerk_id", ["clerkId"])
@@ -129,6 +145,8 @@ export default defineSchema({
       v.literal("not_going")
     ),
     buddyMatchingEnabled: v.boolean(),
+    // For analytics and time-series
+    createdAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_event", ["eventId"])

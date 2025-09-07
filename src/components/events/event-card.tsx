@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { format, isPast } from "date-fns";
+import Image from "next/image";
 import {
   Calendar,
   Clock,
@@ -121,10 +122,12 @@ export function EventCard({
         <div className="flex">
           {event.imageUrl && (
             <div className="relative w-48 h-32 overflow-hidden rounded-l-lg flex-shrink-0">
-              <img
+              <Image
                 src={event.imageUrl}
                 alt={event.title}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
               {showRecommendationScore && event.recommendationScore && (
                 <RecommendationBadge
@@ -237,10 +240,12 @@ export function EventCard({
     <Card className="w-full hover:shadow-lg transition-shadow duration-200 group">
       {event.imageUrl && (
         <div className="relative h-48 overflow-hidden rounded-t-lg">
-          <img
+          <Image
             src={event.imageUrl}
             alt={event.title}
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
           {showRecommendationScore && event.recommendationScore && (
             <RecommendationBadge

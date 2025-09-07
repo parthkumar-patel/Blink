@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
@@ -9,11 +9,9 @@ import {
   X,
   Users,
   Calendar,
-  MapPin,
   Star,
   Sparkles,
   TrendingUp,
-  ArrowRight,
   RefreshCw,
   Zap,
   Target,
@@ -135,7 +133,6 @@ export default function MatchesPage() {
   };
 
   const currentMatch = matchSuggestions?.[currentMatchIndex];
-  const hasMoreMatches = matchSuggestions && currentMatchIndex < matchSuggestions.length - 1;
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-600 bg-green-50";
@@ -207,7 +204,7 @@ export default function MatchesPage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Match Cards Section */}
           <div className="lg:col-span-2">
-            {currentMatch ? (
+            {currentMatch && currentMatch.user ? (
               <div className="space-y-6">
                 {/* Match Card */}
                 <Card className="overflow-hidden shadow-xl border-0 bg-gradient-to-br from-white to-gray-50">
@@ -299,7 +296,7 @@ export default function MatchesPage() {
                     </div>
 
                     {/* Interests */}
-                    {currentMatch.user.interests && currentMatch.user.interests.length > 0 && (
+                    {currentMatch.user?.interests && currentMatch.user.interests.length > 0 && (
                       <div className="mb-6">
                         <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                           <BookOpen className="w-4 h-4 text-blue-500" />
@@ -320,7 +317,11 @@ export default function MatchesPage() {
                       <Button
                         variant="outline"
                         size="lg"
-                        onClick={() => handleReject(currentMatch)}
+                        onClick={() => {
+                          if (currentMatch && currentMatch.user) {
+                            handleReject(currentMatch as MatchSuggestion);
+                          }
+                        }}
                         className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
                       >
                         <X className="w-5 h-5 mr-2" />
@@ -328,7 +329,11 @@ export default function MatchesPage() {
                       </Button>
                       <Button
                         size="lg"
-                        onClick={() => handleAccept(currentMatch)}
+                        onClick={() => {
+                          if (currentMatch && currentMatch.user) {
+                            handleAccept(currentMatch as MatchSuggestion);
+                          }
+                        }}
                         className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
                       >
                         <Heart className="w-5 h-5 mr-2" />
@@ -368,7 +373,7 @@ export default function MatchesPage() {
                         No matches yet
                       </h3>
                       <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                        Let's find some great connections for you! Generate personalized matches based on your profile.
+                        Let&apos;s find some great connections for you! Generate personalized matches based on your profile.
                       </p>
                       {debugInfo && (
                         <div className="text-left text-xs text-gray-500 mt-4 p-4 bg-gray-50 rounded max-w-lg mx-auto">
@@ -393,7 +398,7 @@ export default function MatchesPage() {
                   ) : (
                     <>
                       <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                        You've seen all matches
+                        You&apos;ve seen all matches
                       </h3>
                       <p className="text-gray-600 mb-6 max-w-md mx-auto">
                         Great job exploring! Generate new matches to find more study buddies.

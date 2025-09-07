@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { PageHeader } from "@/components/layout/page-header";
@@ -14,15 +13,16 @@ import {
   Settings,
   Info
 } from "lucide-react";
-import { Views, View } from "react-big-calendar";
+// @ts-expect-error - react-big-calendar has no types in this project
+import { Views } from "react-big-calendar";
 
 export default function CalendarPage() {
   const router = useRouter();
-  const [currentView, setCurrentView] = useState<View>(Views.MONTH);
 
-  const handleEventClick = (event: any) => {
+  const handleEventClick = (event: unknown) => {
     // Navigate to event details page
-    router.push(`/events/${event._id}`);
+    const eventObj = event as { _id: string };
+    router.push(`/events/${eventObj._id}`);
   };
 
   const handleDateClick = (date: Date) => {

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { ExternalLink, Mail, MapPin, Instagram, Facebook, Linkedin, Twitter } from "lucide-react";
@@ -73,10 +74,12 @@ export default function ClubsPage() {
               <Card key={club._id} className="h-full flex flex-col">
                 {club.image && (
                   <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                    <img
+                    <Image
                       src={club.image}
                       alt={club.name}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                   </div>
                 )}

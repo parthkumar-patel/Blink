@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { useUser } from "@clerk/nextjs";
 import { toast } from "sonner";
 import {
   Users,
@@ -11,10 +10,8 @@ import {
   Check,
   X,
   Clock,
-  Heart,
   MessageCircle,
-  Shield,
-  Loader2
+  Shield
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -31,12 +28,8 @@ import {
 import { Id } from "../../../convex/_generated/dataModel";
 
 export default function FriendsPage() {
-  const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-
-  // Get current user profile
-  const userProfile = useQuery(api.users.getCurrentUser, user ? {} : "skip");
 
   // Get friends list
   const friends = useQuery(api.friends.getFriends);
@@ -135,7 +128,7 @@ export default function FriendsPage() {
                   {searchResults.length === 0 ? (
                     <div className="text-center py-8">
                       <Users className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500 font-medium">No users found matching "{searchQuery}"</p>
+                      <p className="text-gray-500 font-medium">No users found matching &quot;{searchQuery}&quot;</p>
                       <p className="text-gray-400 text-sm mt-1">Try searching with a different name</p>
                     </div>
                   ) : (
@@ -253,7 +246,7 @@ export default function FriendsPage() {
                             <div>
                               <h4 className="font-semibold text-gray-900">{request.requester?.name}</h4>
                               <p className="text-sm text-gray-600">
-                                {request.requester?.university} • {request.requester?.year}
+                                {request.requester?.university}
                               </p>
                             </div>
                           </div>
@@ -302,7 +295,7 @@ export default function FriendsPage() {
                             <div>
                               <h4 className="font-semibold text-gray-900">{request.receiver?.name}</h4>
                               <p className="text-sm text-gray-600">
-                                {request.receiver?.university} • {request.receiver?.year}
+                                {request.receiver?.university}
                               </p>
                             </div>
                           </div>

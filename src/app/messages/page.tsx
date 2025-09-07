@@ -435,7 +435,7 @@ export default function MessagesPage() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-[calc(100vh-8rem)]">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-[calc(100vh-8rem)] overflow-hidden">
           <div className="flex h-full min-h-0">
             {/* Conversations Sidebar */}
             <div className={`${selectedConversationId ? 'hidden lg:block' : 'block'} w-full lg:w-80 border-r border-gray-200 flex flex-col min-h-0`}>
@@ -499,7 +499,7 @@ export default function MessagesPage() {
               </div>
 
               {/* Conversations List */}
-              <ScrollArea className="flex-1 min-h-0">
+              <ScrollArea className="flex-1 min-h-0 max-h-full">
                 <div className="p-2">
                   {showArchivedChats ? (
                     // Archived Conversations
@@ -690,7 +690,7 @@ export default function MessagesPage() {
 
             {/* Chat Area */}
             {selectedConversationId && selectedConversation ? (
-              <div className="flex-1 flex flex-col min-h-0">
+              <div className="flex-1 flex flex-col min-h-0 max-h-full overflow-hidden">
                 {/* Chat Header */}
                 <div className="p-4 border-b border-gray-200 bg-white">
                   <div className="flex items-center justify-between">
@@ -790,8 +790,9 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Messages */}
-                <ScrollArea className="flex-1 min-h-0 p-4">
-                  <div className="space-y-4">
+                <ScrollArea className="flex-1 min-h-0 max-h-full">
+                  <div className="p-4">
+                    <div className="space-y-4">
                     {messages?.map((message) => {
                       const isOwn = message.sender?.id === currentUserProfile?._id;
                       const isSystem = message.content.type === "system";
@@ -906,6 +907,7 @@ export default function MessagesPage() {
                     })}
                     {/* bottom anchor for auto scroll */}
                     <div ref={messagesEndRef} />
+                    </div>
                   </div>
                 </ScrollArea>
 

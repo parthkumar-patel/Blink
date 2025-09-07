@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EventFeed } from "@/components/events/event-feed";
 import EventMap from "@/components/map/event-map";
 import { Button } from "@/components/ui/button";
-import { Filter, Grid, List, Map, Plus } from "lucide-react";
+import { Filter, List, Map, Plus } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 

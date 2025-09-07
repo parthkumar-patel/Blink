@@ -1,5 +1,23 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+
+// Helper to update event RSVP count
+async function updateEventRsvpCount(ctx: MutationCtx, eventId: Id<"events">) {
+  const allRsvps: Doc<"rsvps">[] = await ctx.db
+    .query("rsvps")
+    .withIndex("by_event", (q) => q.eq("eventId", eventId))
+    .collect();
+
+  const activeRsvps: Doc<"rsvps">[] = allRsvps.filter(
+    (rsvp: Doc<"rsvps">) => rsvp.status === "going" || rsvp.status === "interested"
+  );
+
+  await ctx.db.patch(eventId, {
+    rsvpCount: activeRsvps.length,
+  });
+}
 
 // RSVP to an event
 export const rsvpToEvent = mutation({
@@ -38,6 +56,7 @@ export const rsvpToEvent = mutation({
         status: args.status,
         buddyMatchingEnabled:
           args.buddyMatchingEnabled ?? existingRsvp.buddyMatchingEnabled,
+        createdAt: existingRsvp.createdAt ?? Date.now(),
       });
 
       // Update event RSVP count
@@ -52,6 +71,7 @@ export const rsvpToEvent = mutation({
         status: args.status,
         buddyMatchingEnabled:
           args.buddyMatchingEnabled ?? user.preferences.buddyMatchingEnabled,
+        createdAt: Date.now(),
       });
 
       // Update event RSVP count
@@ -81,7 +101,7 @@ export const getUserRsvps = query({
       .unique();
 
     if (!user) {
-      return [];
+      return [] as Array<Doc<"rsvps"> & { event: Doc<"events"> | null }>;
     }
 
     let rsvpsQuery = ctx.db
@@ -217,6 +237,7 @@ export const createRSVP = mutation({
       eventId: args.eventId,
       status: args.status,
       buddyMatchingEnabled: user.preferences?.buddyMatchingEnabled ?? false,
+      createdAt: Date.now(),
     });
 
     // Update event RSVP count
@@ -249,6 +270,7 @@ export const updateRSVP = mutation({
     // Update RSVP
     await ctx.db.patch(args.rsvpId, {
       status: args.status,
+      createdAt: rsvp.createdAt ?? Date.now(),
     });
 
     // Update event RSVP count
@@ -280,7 +302,7 @@ export const getEventsForUserRSVPs = query({
       .collect();
 
     // Get events for those RSVPs
-    const events = [];
+    const events: Doc<"events">[] = [];
     for (const rsvp of rsvps) {
       const event = await ctx.db.get(rsvp.eventId);
       if (event) {
@@ -288,24 +310,6 @@ export const getEventsForUserRSVPs = query({
       }
     }
 
-    // Sort by start date
-    return events.sort((a, b) => a.startDate - b.startDate);
+    return events;
   },
 });
-
-// Helper function to update event RSVP count
-async function updateEventRsvpCount(ctx: any, eventId: any) {
-  const allRsvps = await ctx.db
-    .query("rsvps")
-    .withIndex("by_event", (q: any) => q.eq("eventId", eventId))
-    .collect();
-
-  // Filter for going and interested RSVPs
-  const activeRsvps = allRsvps.filter(
-    (rsvp: any) => rsvp.status === "going" || rsvp.status === "interested"
-  );
-
-  await ctx.db.patch(eventId, {
-    rsvpCount: activeRsvps.length,
-  });
-}

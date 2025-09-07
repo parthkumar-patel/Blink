@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { Calendar, Clock, MapPin, Star } from "lucide-react";
 import { format } from "date-fns";
+import Image from "next/image";
 import { api } from "../../../convex/_generated/api";
 import { AppLayout } from "@/components/layout/app-layout";
 import { PageHeader } from "@/components/layout/page-header";
@@ -94,6 +95,7 @@ export default function MyEventsPage() {
     return rsvp?.status === 'interested';
   }) || [];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const EventList = ({ events, title }: { events: any[], title: string }) => {
     const getIcon = () => {
       switch (title) {
@@ -158,11 +160,13 @@ export default function MyEventsPage() {
                     </div>
 
                     {event.images && event.images.length > 0 && (
-                      <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                        <img
+                      <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 relative">
+                        <Image
                           src={event.images[0]}
                           alt={event.title}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          sizes="80px"
                         />
                       </div>
                     )}

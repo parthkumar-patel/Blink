@@ -13,10 +13,16 @@ import Link from "next/link";
 export default function FavoritesPage() {
   const { user } = useUser();
   
+  // Get current user profile first
+  const userProfile = useQuery(
+    api.users.getCurrentUser,
+    user ? {} : "skip"
+  );
+  
   // Get user's favorite events
   const favorites = useQuery(
-    api.favorites.getUserFavorites,
-    user ? {} : "skip"
+    api.favorites.getFavoritedEvents,
+    userProfile?._id ? { userId: userProfile._id } : "skip"
   );
 
   const formatDate = (timestamp: number) => {
@@ -43,67 +49,72 @@ export default function FavoritesPage() {
             </h1>
           </div>
           <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-            Keep track of events you're interested in and never miss out on the good stuff
+            Keep track of events you&apos;re interested in and never miss out on the good stuff
           </p>
         </div>
 
         {/* Favorites List */}
         {favorites && favorites.length > 0 ? (
           <div className="grid lg:grid-cols-2 gap-6">
-            {favorites.map((favorite) => (
-              <Card key={favorite._id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-xl mb-2 line-clamp-2">
-                        {favorite.event.title}
-                      </CardTitle>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {formatDate(favorite.event.date)}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          {favorite.event.location}
+            {favorites.filter(Boolean).map((event) => {
+              if (!event) return null;
+              
+              return (
+                <Card key={event._id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-xl mb-2 line-clamp-2">
+                          {event.title}
+                        </CardTitle>
+                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            {formatDate(event.startDate)}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <MapPin className="w-4 h-4" />
+                            {event.location?.address || 'Location TBD'}
+                          </div>
                         </div>
                       </div>
+                      <Badge variant={event.categories?.includes("Academic") ? "default" : "secondary"}>
+                        {event.categories?.[0] || 'Event'}
+                      </Badge>
                     </div>
-                    <Badge variant={favorite.event.category === "Academic" ? "default" : "secondary"}>
-                      {favorite.event.category}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                
-                <CardContent>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {favorite.event.description}
-                  </p>
+                  </CardHeader>
                   
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Users className="w-4 h-4" />
-                      <span>
-                        {favorite.event.rsvpCount || 0} attending
-                      </span>
+                  <CardContent>
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                      {event.description}
+                    </p>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Users className="w-4 h-4" />
+                        <span>
+                          {event.rsvpCount || 0} attending
+                        </span>
+                      </div>
+                      
+                      <Link href={`/events/${event._id}`}>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          View Event
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                      </Link>
                     </div>
                     
-                    <Link href={`/events/${favorite.event._id}`}>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        View Event
-                        <ExternalLink className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                  
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <p className="text-xs text-gray-400">
-                      Added to favorites on {new Date(favorite._creationTime).toLocaleDateString()}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                        <Heart className="w-3 h-3" />
+                        Added to favorites on {new Date(event._creationTime).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12">

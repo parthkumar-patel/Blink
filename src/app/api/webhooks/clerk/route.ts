@@ -31,7 +31,12 @@ export async function POST(req: Request) {
 
   // Get the body
   const payload = await req.text();
-  const body = JSON.parse(payload);
+  // Parse to validate JSON structure even if not used directly
+  try {
+    JSON.parse(payload);
+  } catch {
+    return new Response("Invalid JSON payload", { status: 400 });
+  }
 
   // Create a new Svix instance with your secret.
   const wh = new Webhook(WEBHOOK_SECRET);
@@ -56,14 +61,24 @@ export async function POST(req: Request) {
   const eventType = evt.type;
 
   if (eventType === "user.created") {
-    const { id, email_addresses, first_name, last_name } = evt.data;
+    const data = evt.data as {
+      id?: string;
+      email_addresses?: Array<{ email_address?: string }>;
+      first_name?: string | null;
+      last_name?: string | null;
+    };
+    const { id, email_addresses, first_name, last_name } = data;
+
+    if (!id) {
+      return new Response("Missing user id", { status: 400 });
+    }
 
     try {
       // Create user profile in Convex
       await convex.mutation(api.users.createOrUpdateUser, {
         clerkId: id,
-        email: email_addresses[0]?.email_address || "",
-        name: `${first_name || ""} ${last_name || ""}`.trim() || "User",
+        email: email_addresses?.[0]?.email_address || "",
+        name: `${first_name ?? ""} ${last_name ?? ""}`.trim() || "User",
         university: "UBC",
         year: "freshman",
         interests: [],
@@ -77,14 +92,24 @@ export async function POST(req: Request) {
   }
 
   if (eventType === "user.updated") {
-    const { id, email_addresses, first_name, last_name } = evt.data;
+    const data = evt.data as {
+      id?: string;
+      email_addresses?: Array<{ email_address?: string }>;
+      first_name?: string | null;
+      last_name?: string | null;
+    };
+    const { id, email_addresses, first_name, last_name } = data;
+
+    if (!id) {
+      return new Response("Missing user id", { status: 400 });
+    }
 
     try {
       // Update user profile in Convex
       await convex.mutation(api.users.createOrUpdateUser, {
         clerkId: id,
-        email: email_addresses[0]?.email_address || "",
-        name: `${first_name || ""} ${last_name || ""}`.trim() || "User",
+        email: email_addresses?.[0]?.email_address || "",
+        name: `${first_name ?? ""} ${last_name ?? ""}`.trim() || "User",
       });
 
       console.log("User profile updated for:", id);

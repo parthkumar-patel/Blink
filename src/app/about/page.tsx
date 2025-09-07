@@ -8,8 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Users, 
   Target, 
-  Zap, 
-  Heart, 
   Calendar,
   MapPin,
   Star,
@@ -142,7 +140,7 @@ export default function AboutPage() {
               </div>
               <h3 className="text-xl font-semibold mb-2">Create Your Profile</h3>
               <p className="text-gray-600">
-                Tell us about your interests, year, and what kind of events you're looking for.
+                Tell us about your interests, year, and what kind of events you&apos;re looking for.
               </p>
             </div>
             

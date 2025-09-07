@@ -5,7 +5,6 @@ import { useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { api } from "../../../convex/_generated/api";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, isSameMonth } from "date-fns";
 
@@ -30,12 +29,12 @@ export function MiniCalendar({
 
   // Get events for the current month
   const events = useQuery(
-    showEvents ? api.events.getEvents : undefined,
+    api.events.getEvents,
     showEvents ? { 
       limit: 100,
       startDate: startOfMonth(currentMonth).getTime(),
       endDate: endOfMonth(currentMonth).getTime(),
-    } : undefined
+    } : "skip"
   );
 
   // Get user RSVPs for highlighting
@@ -60,7 +59,7 @@ export function MiniCalendar({
   const eventsByDate = useMemo(() => {
     if (!events || !showEvents) return {};
     
-    const eventsMap: Record<string, Array<{ event: any; rsvpStatus?: string }>> = {};
+    const eventsMap: Record<string, Array<{ event: Record<string, unknown>; rsvpStatus?: string }>> = {};
     
     events.forEach((event) => {
       const eventDate = format(new Date(event.startDate), 'yyyy-MM-dd');

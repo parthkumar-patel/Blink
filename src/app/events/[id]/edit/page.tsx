@@ -20,7 +20,6 @@ import {
   Calendar,
   MapPin,
   Users,
-  DollarSign,
   Tag,
   X,
 } from "lucide-react";
@@ -48,11 +47,13 @@ const CATEGORIES = [
   "travel",
 ];
 
+import type { Id } from "../../../../../convex/_generated/dataModel";
+
 export default function EditEventPage() {
   const { user } = useUser();
   const router = useRouter();
   const params = useParams();
-  const eventId = params.id as string;
+  const eventId = params.id as Id<"events"> | undefined;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -79,13 +80,13 @@ export default function EditEventPage() {
   // Get the event data
   const event = useQuery(
     api.events.getEvent,
-    eventId ? { eventId: eventId as any } : "skip"
+    eventId ? { eventId } : "skip"
   );
 
   // Check if user can edit this event
   const canEdit = useQuery(
     api.events.canEditEvent,
-    user?.id && eventId ? { eventId: eventId as any, clerkId: user.id } : "skip"
+    user?.id && eventId ? { eventId, clerkId: user.id } : "skip"
   );
 
   const updateEvent = useMutation(api.events.updateEvent);
@@ -134,7 +135,7 @@ export default function EditEventPage() {
       ).getTime();
 
       await updateEvent({
-        eventId: eventId as any,
+        eventId,
         clerkId: user.id,
         title: formData.title,
         description: formData.description,
@@ -165,9 +166,10 @@ export default function EditEventPage() {
 
       toast.success("Event updated successfully!");
       router.push("/my-events/manage");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to update event:", error);
-      toast.error(error.message || "Failed to update event");
+      const errorMessage = error instanceof Error ? error.message : "Failed to update event";
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -225,7 +227,7 @@ export default function EditEventPage() {
           <div className="text-center">
             <h2 className="text-xl font-semibold mb-2">Event not found</h2>
             <p className="text-gray-600 mb-4">
-              The event you're looking for doesn't exist.
+              The event you&apos;re looking for doesn&apos;t exist.
             </p>
             <Link href="/my-events/manage">
               <Button>Back to My Events</Button>
@@ -243,7 +245,7 @@ export default function EditEventPage() {
           <div className="text-center">
             <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
             <p className="text-gray-600 mb-4">
-              You don't have permission to edit this event.
+              You don&apos;t have permission to edit this event.
             </p>
             <Link href="/my-events/manage">
               <Button>Back to My Events</Button>
