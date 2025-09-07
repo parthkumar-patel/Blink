@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
@@ -133,6 +134,8 @@ export const sendMessage = mutation({
     fileName: v.optional(v.string()),
     fileSize: v.optional(v.number()),
     messageType: v.optional(v.union(v.literal("text"), v.literal("image"), v.literal("file"))),
+    // New: allow passing Convex storageId instead of a blob URL
+    storageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -175,12 +178,16 @@ export const sendMessage = mutation({
       metadata: {} as any,
     };
 
-    // Add file metadata if it's a file message
-    if (messageType !== "text" && args.fileUrl) {
+    // Add file metadata if it's a file/image message
+    if (messageType !== "text") {
       content.metadata = {
         fileName: args.fileName,
         fileSize: args.fileSize,
-        imageUrl: messageType === "image" ? args.fileUrl : undefined,
+        // Prefer persistent storageId over ephemeral blob URL
+        storageId: args.storageId,
+        // Keep legacy support if a direct URL is provided
+        imageUrl: messageType === "image" && args.fileUrl ? args.fileUrl : undefined,
+        fileUrl: args.fileUrl,
       };
     }
 
@@ -400,14 +407,28 @@ export const getConversationMessages = query({
     const messagesWithDetails = await Promise.all(
       visibleMessages.map(async (message) => {
         const sender = await ctx.db.get(message.senderId);
-        
+
         // Decrypt message if needed
-        const messageText = message.isEncrypted 
+        const messageText = message.isEncrypted
           ? decryptMessage(message.content.text)
           : message.content.text;
 
+        // Resolve storageId to a temporary URL when present so receivers can view files/images
+        let resolvedMetadata = message.content.metadata as any;
+        if (resolvedMetadata?.storageId) {
+          const url = await ctx.storage.getUrl(resolvedMetadata.storageId);
+          if (url) {
+            resolvedMetadata = {
+              ...resolvedMetadata,
+              // Always override any stale blob: urls
+              imageUrl: url,
+              fileUrl: url,
+            };
+          }
+        }
+
         // Get reply-to message if exists
-        let replyToMessage = null;
+        let replyToMessage = null as any;
         if (message.replyToMessageId) {
           const replyMsg = await ctx.db.get(message.replyToMessageId);
           if (replyMsg) {
@@ -425,11 +446,14 @@ export const getConversationMessages = query({
           content: {
             ...message.content,
             text: messageText,
+            metadata: resolvedMetadata,
           },
-          sender: sender ? {
-            id: sender._id,
-            name: sender.name,
-          } : null,
+          sender: sender
+            ? {
+                id: sender._id,
+                name: sender.name,
+              }
+            : null,
           sentAt: message.sentAt,
           editedAt: message.editedAt,
           readBy: message.readBy,
@@ -476,9 +500,7 @@ export const markMessagesAsRead = mutation({
     for (const messageId of args.messageIds) {
       const message = await ctx.db.get(messageId);
       if (message && message.conversationId === args.conversationId) {
-        // Check if already read by this user
-        const alreadyRead = message.readBy.some(r => r.userId === currentUser._id);
-        
+        const alreadyRead = message.readBy.some((r: any) => r.userId === currentUser._id);
         if (!alreadyRead) {
           await ctx.db.patch(messageId, {
             readBy: [
@@ -774,5 +796,17 @@ export const getArchivedConversations = query({
     return conversationsWithDetails
       .filter((conv): conv is NonNullable<typeof conv> => Boolean(conv))
       .sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+  },
+});
+
+// Generate an upload URL for client-side file uploads to Convex Storage
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    return await ctx.storage.generateUploadUrl();
   },
 });

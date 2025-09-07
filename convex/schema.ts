@@ -377,6 +377,10 @@ export default defineSchema({
         fileName: v.optional(v.string()),
         fileSize: v.optional(v.number()),
         imageUrl: v.optional(v.string()),
+        // New: persistent reference to Convex Storage file
+        storageId: v.optional(v.id("_storage")),
+        // Optional direct url (legacy)
+        fileUrl: v.optional(v.string()),
         systemAction: v.optional(v.string()), // For system messages
       })),
     }),

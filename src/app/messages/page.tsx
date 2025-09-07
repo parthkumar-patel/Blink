@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -124,8 +125,10 @@ export default function MessagesPage() {
     name: string;
     size: number;
   }>>([]);
-  const [isDragging, setIsDragging] = useState(false);
+  const [, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Anchor for auto-scrolling
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Queries
   const conversations = useQuery(api.messaging.getUserConversations, { limit: 50 });
@@ -148,6 +151,32 @@ export default function MessagesPage() {
   const unblockUser = useMutation(api.messaging.unblockUser);
   const createOrGetConversation = useMutation(api.messaging.createOrGetConversation);
   const toggleArchive = useMutation(api.messaging.toggleArchiveConversation);
+  // For uploads to Convex Storage
+  const generateUploadUrl = useMutation(api.messaging.generateUploadUrl);
+
+  // Auto-scroll when messages update or conversation changes
+  useEffect(() => {
+    const el = messagesEndRef.current;
+    if (!el) return;
+    // Find the Radix ScrollArea viewport ancestor and force scroll
+    const viewport = el.closest('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+    if (viewport) {
+      viewport.scrollTop = viewport.scrollHeight;
+    } else {
+      el.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [selectedConversationId, messages?.length]);
+
+  const scrollToBottom = () => {
+    const el = messagesEndRef.current;
+    if (!el) return;
+    const viewport = el.closest('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+    if (viewport) {
+      viewport.scrollTop = viewport.scrollHeight;
+    } else {
+      el.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  };
 
   // Auto-mark messages as read when viewing conversation
   useEffect(() => {
@@ -177,6 +206,7 @@ export default function MessagesPage() {
         text: messageText.trim(),
       });
       setMessageText("");
+      scrollToBottom();
       toast.success("Message sent!");
     } catch (error) {
       console.error("Error sending message:", error);
@@ -220,6 +250,56 @@ export default function MessagesPage() {
     }
   };
 
+  // Helper to upload a file to Convex Storage and return storageId
+  const uploadToConvex = async (file: File) => {
+    const uploadUrl = await generateUploadUrl();
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!res.ok) throw new Error("Upload failed");
+    const json = await res.json();
+    // Convex returns { storageId }
+    return (json.storageId ?? json)?.toString();
+  };
+
+  const sendSelectedImages = async () => {
+    if (!selectedConversationId || selectedImages.length === 0) return;
+
+    setUploadingFile(true);
+    try {
+      // Send images in order
+      for (const image of selectedImages) {
+        const storageId = await uploadToConvex(image.file);
+        await sendMessage({
+          conversationId: selectedConversationId,
+          text: image.name,
+          fileName: image.name,
+          fileSize: image.size,
+          messageType: 'image',
+          storageId,
+        });
+      }
+      
+      toast.success(`${selectedImages.length} image${selectedImages.length > 1 ? 's' : ''} sent!`);
+      
+      // Clean up
+      selectedImages.forEach(img => URL.revokeObjectURL(img.preview));
+      setSelectedImages([]);
+      setMessageText('');
+      scrollToBottom();
+    } catch (error) {
+      console.error("Error sending images:", error);
+      toast.error("Failed to send images. Please try again.");
+    } finally {
+      setUploadingFile(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || !selectedConversationId) return;
@@ -238,23 +318,21 @@ export default function MessagesPage() {
       
       setSelectedImages(prev => [...prev, ...newImages]);
     } else {
-      // Handle non-image files - send immediately
+      // Handle non-image files - upload then send
       const file = files[0];
       setUploadingFile(true);
       try {
-        const fileUrl = URL.createObjectURL(file);
-        const messageType = 'file';
-        
+        const storageId = await uploadToConvex(file);
         await sendMessage({
           conversationId: selectedConversationId,
           text: file.name,
-          fileUrl: fileUrl,
           fileName: file.name,
           fileSize: file.size,
-          messageType: messageType as any,
+          messageType: 'file',
+          storageId,
         });
-        
         toast.success('File sent!');
+        scrollToBottom();
       } catch (error) {
         console.error("Error uploading file:", error);
         toast.error("Failed to send file. Please try again.");
@@ -288,43 +366,7 @@ export default function MessagesPage() {
     });
   };
 
-  const sendSelectedImages = async () => {
-    if (!selectedConversationId || selectedImages.length === 0) return;
-
-    setUploadingFile(true);
-    try {
-      // Send images in order
-      for (const image of selectedImages) {
-        const fileUrl = URL.createObjectURL(image.file);
-        
-        await sendMessage({
-          conversationId: selectedConversationId,
-          text: image.name,
-          fileUrl: fileUrl,
-          fileName: image.name,
-          fileSize: image.size,
-          messageType: 'image' as any,
-        });
-      }
-      
-      toast.success(`${selectedImages.length} image${selectedImages.length > 1 ? 's' : ''} sent!`);
-      
-      // Clean up
-      selectedImages.forEach(img => URL.revokeObjectURL(img.preview));
-      setSelectedImages([]);
-      setMessageText('');
-    } catch (error) {
-      console.error("Error sending images:", error);
-      toast.error("Failed to send images. Please try again.");
-    } finally {
-      setUploadingFile(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const handleEmojiSelect = (emojiObject: any) => {
+  const handleEmojiSelect = (emojiObject: { emoji: string }) => {
     setMessageText(prev => prev + emojiObject.emoji);
     setShowEmojiPicker(false);
   };
@@ -394,54 +436,70 @@ export default function MessagesPage() {
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-[calc(100vh-8rem)]">
-          <div className="flex h-full">
+          <div className="flex h-full min-h-0">
             {/* Conversations Sidebar */}
-            <div className={`${selectedConversationId ? 'hidden lg:block' : 'block'} w-full lg:w-80 border-r border-gray-200 flex flex-col`}>
+            <div className={`${selectedConversationId ? 'hidden lg:block' : 'block'} w-full lg:w-80 border-r border-gray-200 flex flex-col min-h-0`}>
               {/* Header */}
               <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-3 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center shadow-sm">
                       <MessageCircle className="w-5 h-5 text-white" />
                     </div>
-                    <h1 className="text-xl font-semibold text-gray-900">Messages</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-gray-900 truncate">Messages</h1>
                   </div>
-                  <div className="flex gap-2">
+
+                  <div className="flex items-center gap-2 shrink-0">
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="gap-2"
+                      className="gap-2 rounded-xl whitespace-nowrap shadow-sm hover:shadow transition"
                       onClick={() => setShowNewConversationDialog(true)}
                     >
                       <Plus className="w-4 h-4" />
-                      New
+                      <span className="hidden sm:inline">New</span>
                     </Button>
-                    <Button 
-                      variant={showArchivedChats ? "default" : "outline"}
-                      size="sm" 
-                      className="gap-2"
-                      onClick={() => setShowArchivedChats(!showArchivedChats)}
-                    >
-                      <Archive className="w-4 h-4" />
-                      {showArchivedChats ? "Active" : "Archived"}
-                    </Button>
+
+                    <div className="flex rounded-xl overflow-hidden border border-gray-200">
+                      <Button
+                        type="button"
+                        variant={showArchivedChats ? "outline" : "default"}
+                        size="sm"
+                        className={`${showArchivedChats ? 'bg-white text-gray-700' : 'bg-blue-600 text-white'} px-3 whitespace-nowrap`}
+                        onClick={() => setShowArchivedChats(false)}
+                        aria-pressed={!showArchivedChats}
+                      >
+                        Active
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={showArchivedChats ? "default" : "outline"}
+                        size="sm"
+                        className={`${showArchivedChats ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'} px-3 whitespace-nowrap`}
+                        onClick={() => setShowArchivedChats(true)}
+                        aria-pressed={showArchivedChats}
+                      >
+                        <Archive className="w-4 h-4 mr-1" />
+                        <span className="hidden sm:inline">Archived</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 
                 {/* Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
                     placeholder="Search conversations..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-10 rounded-xl bg-gray-50 border border-gray-200 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-blue-500"
                   />
                 </div>
               </div>
 
               {/* Conversations List */}
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 min-h-0">
                 <div className="p-2">
                   {showArchivedChats ? (
                     // Archived Conversations
@@ -507,6 +565,18 @@ export default function MessagesPage() {
                         </p>
                       </div>
                     )
+                  ) : conversations === undefined ? (
+                    <div className="space-y-2 p-2">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="animate-pulse flex items-center gap-3 p-3 rounded-xl border border-gray-200">
+                          <div className="w-12 h-12 rounded-full bg-gray-200" />
+                          <div className="flex-1 min-w-0">
+                            <div className="h-4 w-1/3 bg-gray-200 rounded mb-2" />
+                            <div className="h-3 w-2/3 bg-gray-200 rounded" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   ) : filteredConversations.length === 0 ? (
                     <div className="text-center py-8">
                       <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -524,18 +594,54 @@ export default function MessagesPage() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       {filteredConversations.map((conversation) => {
-                        const participant = conversation.participants[0];
+                        const otherParticipant = conversation.participants.find(p => p.id !== currentUserProfile?._id) || conversation.participants[0];
                         const isSelected = selectedConversationId === conversation.id;
-                        
+                        const last = (conversation as any).lastMessage;
+
+                        const lastPreview = (() => {
+                          if (!last) return (
+                            <span className="text-sm text-gray-400 italic">
+                              {getInitiatedViaText(conversation.metadata.initiatedVia)}
+                            </span>
+                          );
+                          const type = last.content?.type;
+                          if (type === "system") {
+                            return (
+                              <span className="text-sm text-gray-500 italic flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {last.content?.text}
+                              </span>
+                            );
+                          }
+                          if (type === "image") {
+                            return (
+                              <span className="text-sm text-gray-600 flex items-center gap-1">
+                                <ImageIcon className="w-3.5 h-3.5 text-blue-500" /> Photo{last.content?.text ? ` · ${last.content.text}` : ""}
+                              </span>
+                            );
+                          }
+                          if (type === "file") {
+                            return (
+                              <span className="text-sm text-gray-600 flex items-center gap-1">
+                                <File className="w-3.5 h-3.5 text-amber-500" /> {last.content?.metadata?.fileName || "File"}
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="text-sm text-gray-600 truncate">
+                              {last.sender?.name ? `${last.sender.name}: ` : ""}{last.content?.text}
+                            </span>
+                          );
+                        })();
+
                         return (
                           <div
                             key={conversation.id}
-                            className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                              isSelected 
-                                ? "bg-blue-50 border border-blue-200" 
-                                : "hover:bg-gray-50"
+                            className={`group p-3 rounded-xl cursor-pointer transition-all border ${
+                              isSelected
+                                ? "bg-blue-50 border-blue-200 ring-1 ring-blue-300"
+                                : "bg-white hover:bg-gray-50 border-gray-200"
                             }`}
                             onClick={() => setSelectedConversationId(conversation.id)}
                           >
@@ -544,45 +650,33 @@ export default function MessagesPage() {
                                 <Avatar className="w-12 h-12">
                                   <AvatarImage src="" />
                                   <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
-                                    {participant?.name.charAt(0)}
+                                    {otherParticipant?.name?.charAt(0)}
                                   </AvatarFallback>
                                 </Avatar>
                                 {conversation.unreadCount > 0 && (
-                                  <Badge className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center p-0">
+                                  <Badge className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center p-0">
                                     {conversation.unreadCount}
                                   </Badge>
                                 )}
                               </div>
-                              
+
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-1">
-                                  <h4 className="font-medium text-gray-900 truncate">
-                                    {participant?.name}
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <h4 className="font-semibold text-gray-900 truncate">
+                                    {otherParticipant?.name}
                                   </h4>
-                                  <span className="text-xs text-gray-500">
+                                  <span className="text-[11px] text-gray-500 ml-2 whitespace-nowrap">
                                     {formatTime(conversation.lastMessageAt)}
                                   </span>
                                 </div>
-                                
-                                <p className="text-sm text-gray-600 truncate mb-1">
-                                  {participant?.university}
+
+                                <p className="text-xs text-gray-500 truncate mb-1">
+                                  {otherParticipant?.university}
                                 </p>
-                                
-                                {(conversation as any).lastMessage ? (
-                                  <p className="text-sm text-gray-500 truncate">
-                                    {(conversation as any).lastMessage.content.type === "system" ? (
-                                      <span className="italic">{(conversation as any).lastMessage.content.text}</span>
-                                    ) : (
-                                      <>
-                                        {(conversation as any).lastMessage.sender?.name}: {(conversation as any).lastMessage.content.text}
-                                      </>
-                                    )}
-                                  </p>
-                                ) : (
-                                  <p className="text-sm text-gray-400 italic">
-                                    {getInitiatedViaText(conversation.metadata.initiatedVia)}
-                                  </p>
-                                )}
+
+                                <div className="truncate">
+                                  {lastPreview}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -596,7 +690,7 @@ export default function MessagesPage() {
 
             {/* Chat Area */}
             {selectedConversationId && selectedConversation ? (
-              <div className="flex-1 flex flex-col">
+              <div className="flex-1 flex flex-col min-h-0">
                 {/* Chat Header */}
                 <div className="p-4 border-b border-gray-200 bg-white">
                   <div className="flex items-center justify-between">
@@ -696,7 +790,7 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Messages */}
-                <ScrollArea className="flex-1 p-4">
+                <ScrollArea className="flex-1 min-h-0 p-4">
                   <div className="space-y-4">
                     {messages?.map((message) => {
                       const isOwn = message.sender?.id === currentUserProfile?._id;
@@ -757,6 +851,17 @@ export default function MessagesPage() {
                                     <p className="text-sm mt-2">{message.content.text}</p>
                                   )}
                                 </div>
+                              ) : message.content.type === "image" && message.content.metadata?.fileUrl ? (
+                                <div className="mb-2">
+                                  <img 
+                                    src={message.content.metadata.fileUrl} 
+                                    alt={message.content.metadata?.fileName || "Shared image"}
+                                    className="max-w-xs rounded-lg"
+                                  />
+                                  {message.content.text && (
+                                    <p className="text-sm mt-2">{message.content.text}</p>
+                                  )}
+                                </div>
                               ) : message.content.type === "file" ? (
                                 <div className="mb-2 p-2 border rounded-lg bg-opacity-20 bg-white">
                                   <div className="flex items-center gap-2">
@@ -799,6 +904,8 @@ export default function MessagesPage() {
                         </div>
                       );
                     })}
+                    {/* bottom anchor for auto scroll */}
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
 
