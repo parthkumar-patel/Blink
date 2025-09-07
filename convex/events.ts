@@ -429,7 +429,7 @@ export const updateEvent = mutation({
       throw new Error("You don't have permission to update this event");
     }
 
-    const updateData: Partial<Doc<"events">> & { updatedAt: number } = { updatedAt: Date.now() };
+    const updateData: Partial<Doc<"events">> & { updatedAt: number; reviewerId?: Id<"users"> | undefined; reviewedAt?: number | undefined; rejectionReason?: string | undefined } = { updatedAt: Date.now() };
 
     if (args.title !== undefined) updateData.title = args.title;
     if (args.description !== undefined) updateData.description = args.description;
@@ -445,6 +445,18 @@ export const updateEvent = mutation({
     if (args.imageStorageIds !== undefined) updateData.imageStorageIds = args.imageStorageIds as Id<"_storage">[];
     if (args.externalLinks !== undefined) updateData.externalLinks = args.externalLinks as Doc<"events">["externalLinks"];
     if (args.status !== undefined) updateData.status = args.status as Doc<"events">["status"];
+
+    // If an organizer (non-admin) edits an approved event without explicitly setting status,
+    // flip it back to pending for re-approval and clear review metadata.
+    const isAdmin = user.preferences?.privacySettings?.profileVisible === true;
+    const userProvidedStatus = args.status !== undefined;
+    if (!isAdmin && !userProvidedStatus && event.status === "approved") {
+      updateData.status = "pending" as Doc<"events">["status"];
+      // Clear review metadata
+      updateData.reviewerId = undefined;
+      updateData.reviewedAt = undefined;
+      updateData.rejectionReason = undefined;
+    }
 
     await ctx.db.patch(args.eventId, updateData);
 

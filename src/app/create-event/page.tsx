@@ -6,6 +6,8 @@ import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import NextImage from "next/image";
 import { Calendar, MapPin, DollarSign, Tag, Image as ImageIcon, Save, X } from "lucide-react";
+// Add Eye icon for preview
+import { Eye } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -13,6 +15,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+// Add Dialog for preview modal
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+// Use EventCard for consistent preview UI
+import { EventCard } from "@/components/events/event-card";
 
 export default function CreateEventPage() {
   const { user } = useUser();
@@ -58,6 +64,45 @@ export default function CreateEventPage() {
   const [currentTag, setCurrentTag] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedImages, setSelectedImages] = useState<Array<{ id: string; file: File; preview: string; name: string; size: number }>>([]);
+  // Add preview modal state
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Helper to build a preview event compatible with EventCard
+  const buildPreviewEvent = () => {
+    const start = formData.startDate
+      ? new Date(`${formData.startDate}T${formData.startTime || '00:00'}`).getTime()
+      : Date.now();
+    const end = formData.endDate && formData.endTime
+      ? new Date(`${formData.endDate}T${formData.endTime}`).getTime()
+      : start + 2 * 60 * 60 * 1000;
+
+    return {
+      _id: "preview",
+      title: formData.title || "Untitled Event",
+      description: formData.description || "No description provided yet.",
+      startDate: start,
+      endDate: end,
+      location: {
+        name: formData.locationName || (formData.isVirtual ? "Online" : "TBD"),
+        address: formData.locationAddress || (formData.isVirtual ? "Online" : "TBD"),
+        isVirtual: formData.isVirtual,
+      },
+      organizer: {
+        name: formData.organizerName || (user?.fullName ?? "Organizer"),
+        verified: false,
+      },
+      categories: formData.categories.length ? formData.categories : ["general"],
+      price: {
+        isFree: formData.isFree,
+        amount: formData.isFree ? 0 : Number(formData.amount || 0),
+        currency: formData.currency || "CAD",
+      },
+      rsvpCount: 0,
+      maxCapacity: formData.capacity ? Number(formData.capacity) : undefined,
+      imageUrl: selectedImages[0]?.preview,
+      sourceUrl: formData.websiteUrl || undefined,
+    };
+  };
 
   const availableCategories = [
     'tech', 'music', 'sports', 'volunteering', 'career', 'academic', 
@@ -620,6 +665,16 @@ export default function CreateEventPage() {
             >
               Cancel
             </Button>
+            {/* New Preview button */}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowPreview(true)}
+              className="flex items-center gap-2"
+            >
+              <Eye className="w-4 h-4" />
+              Preview
+            </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
@@ -631,6 +686,32 @@ export default function CreateEventPage() {
           </div>
         </form>
       </div>
+
+      {/* Preview Dialog */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Event Preview</DialogTitle>
+            <DialogDescription>
+              This is how your event will appear in listings. Images will be uploaded when you submit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Thumbnails preview if multiple images selected */}
+            {selectedImages.length > 1 && (
+              <div className="grid grid-cols-3 gap-2">
+                {selectedImages.map((img) => (
+                  <div key={img.id} className="relative w-full h-20 overflow-hidden rounded-md border">
+                    {/* Use Next/Image with unoptimized for blob previews */}
+                    <NextImage src={img.preview} alt={img.name} fill className="object-cover" unoptimized />
+                  </div>
+                ))}
+              </div>
+            )}
+            <EventCard event={buildPreviewEvent()} viewMode="list" />
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
